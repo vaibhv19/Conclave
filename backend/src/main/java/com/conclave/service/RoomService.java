@@ -44,12 +44,17 @@ public class RoomService {
         validateRoleAssignments(request.getRoleAssignments());
 
         // 1. Create and Save Room
+        List<String> roleNames = request.getRoleAssignments().stream()
+                .map(RoleAssignmentDTO::getRoleName)
+                .collect(Collectors.toList());
+
         Room room = Room.builder()
                 .owner(owner)
                 .name(request.getName())
                 .objective(request.getObjective())
                 .status(RoomStatus.INITIALIZED)
                 .build();
+        room.setPipelineSequenceList(roleNames);
         Room savedRoom = roomRepository.save(room);
 
         // 2. Create and Save Role Assignments
