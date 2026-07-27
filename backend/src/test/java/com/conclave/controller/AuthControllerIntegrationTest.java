@@ -3,6 +3,7 @@ package com.conclave.controller;
 import com.conclave.domain.User;
 import com.conclave.dto.UserLoginRequest;
 import com.conclave.dto.UserRegisterRequest;
+import com.conclave.repository.RoomRepository;
 import com.conclave.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +33,9 @@ class AuthControllerIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private RoomRepository roomRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -39,6 +43,7 @@ class AuthControllerIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        roomRepository.deleteAll();
         userRepository.deleteAll();
     }
 
