@@ -39,11 +39,17 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
                     if (email != null) {
                         UserDetails userDetails = userDetailsService.loadUserByUsername(email);
                         if (jwtService.isTokenValid(token, userDetails)) {
+                            StompHeaderAccessor mutableAccessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+                            if (mutableAccessor == null || !mutableAccessor.isMutable()) {
+                                mutableAccessor = StompHeaderAccessor.wrap(message);
+                            }
+
                             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                                     userDetails, null, userDetails.getAuthorities()
                             );
-                            accessor.setUser(authentication);
+                            mutableAccessor.setUser(authentication);
                             log.info("WebSocket successfully authenticated user: {}", email);
+                            return org.springframework.messaging.support.MessageBuilder.createMessage(message.getPayload(), mutableAccessor.getMessageHeaders());
                         } else {
                             log.warn("WebSocket CONNECT rejected: Invalid token for user {}", email);
                             throw new IllegalArgumentException("Invalid JWT token");
