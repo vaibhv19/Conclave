@@ -1,67 +1,73 @@
 # Conclave
 
-**Status: 💤 Parked / Not Started**
+Conclave is a multi-provider AI consensus workspace where multiple AI models (Google Gemini, OpenAI, Anthropic Claude) collaborate, debate, and refine plans in a live, real-time environment. It uses the Provider Adapter Pattern to standardize multi-vendor APIs, a custom Model Registry resolved at runtime, and WebSockets (STOMP) for dynamic turn broadcasting.
 
-## The Problem
+---
 
-While building previous projects, I found myself using multiple AI tools for different 
-jobs — GPT, Gemini, Claude, Grok, Stitch, AI Studio, Antigravity, NotebookLM — each 
-better suited to a specific role (technical writer, reviewer, tester, PM). 
+## 🛠️ Prerequisites
 
-The friction: I had to manually copy context between tools every time. No shared memory, 
-no handoff, just me pasting the same background into 8 different chat windows. 
-This project is meant to fix that.
+To run this project locally, ensure you have the following installed:
+- **Java (JDK) 21** or higher
+- **Node.js** (v18.x or higher) and **npm**
+- **Docker** and **Docker Compose**
+- **Maven** (optional, you can use the wrapper if provided, or direct `mvn` command)
 
-## The Idea
+---
 
-A "group chat" for AI models, where each model is assigned a role (Writer, Reviewer, 
-Refiner, Tester, PM, etc.) and they collaborate on a task — drafting, reviewing, and 
-refining plans or documents — without me manually shuttling context between them.
+## 🚀 Quickstart Guide
 
-## Planned Stack
+Follow these steps to get the local workspace running.
 
-- **Backend:** Spring Boot + Spring AI
-- **Frontend:** React
-- **Realtime:** WebSockets (STOMP) for live agent turns, chat-style
+### 1. Database Setup (Infrastructure)
+Spin up the local PostgreSQL 16 database using Docker Compose:
+```bash
+docker compose up -d
+```
+This provisions a database on port `5432` with:
+- Database: `conclave_db`
+- Username: `conclave_user`
+- Password: `conclave_password`
 
-## Architecture Sketch
+### 2. Backend Orchestration (Spring Boot)
+1. Navigate to the `backend/` directory.
+2. Inject your API keys using the `.env` template:
+   - Copy `.env.example` in the root to `.env` and fill out your GCP Project ID and Location.
+3. Build and run the Spring Boot application:
+   ```bash
+   mvn clean install
+   mvn spring-boot:run
+   ```
+   The backend will bootstrap and start a server listening on port `8080`.
 
-- Each agent = a Spring AI `ChatClient` bean, wired to a different provider/model, 
-  with its role baked into the system prompt
-- Shared `WorkflowState` object (task, current draft, review comments, history) passed 
-  between agents instead of full transcript — cheaper and easier to reason about
-- Sequential pipeline engine to start (e.g. Writer → Reviewer → Refiner), not a generic 
-  agent graph — prove the mechanic before generalizing
-- WebSocket broadcast so frontend shows each agent's turn live, chat-style
-- "Pause & intervene" feature — stop the pipeline mid-run and inject my own message 
-  before it continues (this solves the original frustration directly)
+### 3. Frontend Client (React + Vite)
+1. Navigate to the `frontend/` directory.
+2. Install the node packages:
+   ```bash
+   npm install
+   ```
+3. Launch the Vite local dev server:
+   ```bash
+   npm run dev
+   ```
+   Open your browser and navigate to `http://localhost:5173/` to see the Conclave dashboard.
 
-## Open Decisions (resolve before starting)
+---
 
-- [ ] Which 2 providers to support first — pick based on existing API access 
-      (OpenAI/Anthropic are simplest to wire up in Spring AI; Gemini via Vertex AI 
-      needs GCP project setup, heavier lift)
-- [ ] How context gets passed — full history vs. summarized state object (leaning 
-      toward summarized state for cost/simplicity)
-- [ ] Hardcoded roles vs. dynamic role-to-model assignment (start hardcoded, 
-      generalize later via a `Map<String, ChatClient>` registry)
-- [ ] Cost tracking — multiple paid APIs per task add up fast, need per-turn 
-      token/cost logging early
+## 📂 Project Architecture
 
-## Suggested Build Order (when resumed)
+```
+Conclave/
+├── docker-compose.yml                # Spins up PostgreSQL 16
+├── .gitignore                         # Monorepo git exclusions
+├── .env.example                       # API key template for Gemini Vertex
+├── backend/                           # Spring Boot Maven backend
+│   ├── pom.xml                        # Maven project descriptor
+│   └── src/
+└── frontend/                          # React + Vite frontend
+    ├── package.json                   # Client configurations
+    ├── tailwind.config.js             # Tailwind CSS styling config
+    └── src/                           # Frontend React components
+```
 
-1. One `ChatClient` bean, single prompt/response — confirm Spring AI + provider 
-   API keys work end to end
-2. Second `ChatClient` (different provider), hardcoded sequential pipeline, 
-   console-only output
-3. WebSocket broadcasting to a minimal frontend
-4. React chat UI consuming the WebSocket stream, agent-tagged messages
-5. Pause/intervene feature
-6. Generalize roles/models via registry instead of hardcoded beans
-
-## Why Parked
-
-Too much surface area to take on alongside current priorities — multi-provider 
-integration, WebSockets, and a non-trivial frontend all at once. Better to ship 
-other projects first and come back to this with more project experience and a 
-clearer head.
+For detailed guides, troubleshooting tips, and deeper architecture reviews, see:
+- [01_Developer_Environment_Setup.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/01_Developer_Environment_Setup.md)
