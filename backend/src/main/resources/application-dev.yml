@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/conclave_db
+    username: conclave_user
+    password: conclave_password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # Pre-configure Spring AI Vertex AI Gemini defaults to avoid startup validation failure
+  ai:
+    vertex:
+      ai:
+        gemini:
+          project-id: conclave-dev-project
+          location: us-central1
+          model: gemini-1.5-flash
