@@ -1,0 +1,37 @@
+# Maven
+target/
+*.pom.sha1
+*.jar
+*.war
+*.zip
+*.tar.gz
+*.rar
+
+# Node / Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+logs/
