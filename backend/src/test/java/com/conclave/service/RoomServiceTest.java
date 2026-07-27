@@ -1,6 +1,5 @@
 package com.conclave.service;
 
-import com.conclave.domain.RoleAssignment;
 import com.conclave.domain.Room;
 import com.conclave.domain.User;
 import com.conclave.domain.WorkflowState;
