@@ -1,7 +1,6 @@
 package com.conclave.service;
 
 import com.conclave.domain.*;
-import com.conclave.domain.enums.ModelId;
 import com.conclave.domain.enums.RoomStatus;
 import com.conclave.domain.enums.SenderType;
 import com.conclave.repository.*;
@@ -14,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 

@@ -19,7 +19,6 @@ import com.conclave.service.WorkflowStateService;
 import com.conclave.util.MentionParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -120,8 +119,6 @@ public class ChatController {
             TurnStartedEvent startedEvent = new TurnStartedEvent(matchedAssignment.getRoleName(), modelId, isMocked);
             messagingTemplate.convertAndSend("/topic/room/" + roomId, startedEvent);
 
-            // 3. Resolve Client & Adapter
-            ChatClient chatClient = modelRegistry.getClient(modelId);
             ProviderAdapter adapter;
             if (ModelId.GEMINI_PRO.name().equals(modelId)) {
                 adapter = new GeminiAdapter();
