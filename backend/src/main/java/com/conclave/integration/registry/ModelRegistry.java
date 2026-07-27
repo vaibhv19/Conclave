@@ -14,4 +14,12 @@ public interface ModelRegistry {
      * @return The qualified ChatClient instance
      */
     ChatClient getClient(String modelId);
+
+    /**
+     * Retrieves the underlying ChatModel bean associated with the given model ID.
+     *
+     * @param modelId The ID representing the model
+     * @return The qualified ChatModel instance
+     */
+    org.springframework.ai.chat.model.ChatModel getChatModel(String modelId);
 }
