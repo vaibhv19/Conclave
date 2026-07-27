@@ -12,9 +12,18 @@ import lombok.Setter;
 @NoArgsConstructor
 public class SystemInterventionEvent extends WsEvent {
     private String reason;
+    private String summary;
+    private String comments;
 
     public SystemInterventionEvent(String reason) {
         super("SYSTEM_INTERVENTION");
         this.reason = reason;
+    }
+
+    public SystemInterventionEvent(String reason, String summary, String comments) {
+        super("SYSTEM_INTERVENTION");
+        this.reason = reason;
+        this.summary = summary;
+        this.comments = comments;
     }
 }
