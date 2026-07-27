@@ -1,20 +1,11 @@
 package com.conclave.controller;
 
 import com.conclave.domain.*;
-import com.conclave.domain.enums.ModelId;
 import com.conclave.domain.enums.SenderType;
 import com.conclave.dto.ChatMessageRequest;
-import com.conclave.dto.ws.ContentChunkEvent;
-import com.conclave.dto.ws.TurnCompletedEvent;
-import com.conclave.dto.ws.TurnStartedEvent;
-import com.conclave.exception.OrchestrationException;
 import com.conclave.exception.ResourceNotFoundException;
-import com.conclave.integration.adapter.*;
-import com.conclave.integration.registry.ModelRegistry;
 import com.conclave.repository.CanonicalMessageRepository;
-import com.conclave.repository.RoleAssignmentRepository;
 import com.conclave.repository.RoomRepository;
-import com.conclave.service.TokenUsageLogService;
 import com.conclave.service.WorkflowStateService;
 import com.conclave.util.MentionParser;
 import com.conclave.security.UserPrincipal;
@@ -31,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.Map;
