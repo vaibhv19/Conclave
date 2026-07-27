@@ -106,23 +106,31 @@ public class FakeClaudeChatClient implements ChatModel {
             }
         };
 
-        ChatResponseMetadata metadata = new ChatResponseMetadata() {
-            @Override
-            public RateLimit getRateLimit() {
-                return null;
-            }
-
-            @Override
-            public PromptMetadata getPromptMetadata() {
-                return null;
-            }
-
-            @Override
-            public Usage getUsage() {
-                return usage;
-            }
-        };
+        ChatResponseMetadata metadata = new SimpleChatResponseMetadata(usage);
 
         return new ChatResponse(List.of(generation), metadata);
+    }
+
+    private static class SimpleChatResponseMetadata extends java.util.HashMap<String, Object> implements ChatResponseMetadata {
+        private final Usage usage;
+
+        public SimpleChatResponseMetadata(Usage usage) {
+            this.usage = usage;
+        }
+
+        @Override
+        public RateLimit getRateLimit() {
+            return null;
+        }
+
+        @Override
+        public PromptMetadata getPromptMetadata() {
+            return null;
+        }
+
+        @Override
+        public Usage getUsage() {
+            return usage;
+        }
     }
 }
