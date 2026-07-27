@@ -17,11 +17,8 @@ one conversation — no more manually copy-pasting context between tabs.
   provider's API actually expects (Gemini, OpenAI, Claude each differ in message/role
   structure)
 - **Gemini adapter** — real API integration (free tier), used for actual v1 conversations
-- **OpenAI adapter** and **Claude adapter** — fully implemented and unit-tested against
-  mocked/stubbed responses, proving the translation logic without real API calls or cost;
-  real wiring deferred to v2
-- Dynamic role-to-model registry (`Map<String, ChatClient>`-style) — roles assigned to
-  models at runtime, not hardcoded
+- **OpenAI adapter** and **Claude adapter** — fully implemented and unit-tested as Fake Providers returning stubbed responses, proving the translation logic without real API calls or cost; real wiring deferred to v2
+- Model Registry and Role Mapping — roles are assigned to model IDs at runtime (stored as Role Mappings), which are dynamically resolved to their corresponding `ChatClient` beans from the Model Registry
 - Summarized `WorkflowState` (task, current draft, review comments, history) passed
   between turns instead of full transcript — cheaper and easier to reason about
 - Conversation persistence — full shared history stored and reusable across the session
@@ -49,8 +46,7 @@ one conversation — no more manually copy-pasting context between tabs.
   same shape
 - Adapter pattern per provider, translating one canonical conversation into three
   different API formats on demand
-- Differentiator preserved at zero real cost: Gemini's adapter is exercised live; OpenAI's
-  and Claude's adapters are exercised through tested mocks, so all three translations are
+- Differentiator preserved at zero real cost: Gemini's adapter is exercised live; OpenAI's and Claude's adapters are exercised through Fake Providers, so all three translations are
   proven even though only one provider is actually called
 - Explicitly scoped as integration/systems engineering, not AI engineering — no retrieval,
   no agentic reasoning in v1, just clean orchestration across providers

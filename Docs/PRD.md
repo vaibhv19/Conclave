@@ -18,7 +18,7 @@ The friction in this workflow is **Context Fragmentation**: users must manually 
 ## 2. Target Persona & Use Case
 *   **Target Persona:** Technical Recruiters and Engineering Managers.
 *   **Core Use Case:** Demonstrating **Systems Engineering** and **Integration Patterns**. The project serves as a portfolio piece to show how a single Java/Spring Boot backend can orchestrate complex, multi-vendor API interactions using the Adapter Pattern. 
-*   **User Action:** A user initiates a session, assigns roles (e.g., "Writer" to Gemini, "Reviewer" to a mocked Claude), and directs a collaborative task. The system handles the state translation so each model sees the updated "Workflow State" as the conversation progresses.
+*   **User Action:** A user initiates a session, assigns roles (e.g., "Writer" to Gemini, "Reviewer" to a fake Claude), and directs a collaborative task. The system handles the state translation so each model sees the updated "WorkflowState" as the conversation progresses.
 
 ---
 
@@ -28,10 +28,10 @@ The friction in this workflow is **Context Fragmentation**: users must manually 
 *   **Unified Message Schema:** A single, normalized database format to store conversation history, independent of provider-specific requirements.
 *   **Provider Adapter Layer:** A robust translation tier that maps the canonical schema into the distinct message/role structures required by:
     *   **Google Gemini** (Live API integration).
-    *   **OpenAI GPT** (Mocked adapter/stubbed responses for v1).
-    *   **Anthropic Claude** (Mocked adapter/stubbed responses for v1).
+    *   **OpenAI GPT** (Fake Provider/stubbed responses for v1).
+    *   **Anthropic Claude** (Fake Provider/stubbed responses for v1).
 *   **Workflow State Management:** Implementation of a `WorkflowState` object that summarizes the conversation to reduce token costs and noise when passing context between turns.
-*   **Dynamic Model Registry:** A `Map`-based registry allowing the application to resolve and inject the correct `ChatClient` bean based on the assigned role/model.
+*   **Model Registry & Role Mapping:** A custom service that resolves and injects the correct `ChatClient` bean based on the assigned model, combined with a room-specific Role Mapping.
 *   **Real-time Orchestration:** Using WebSockets (STOMP) to broadcast model turns and status updates to the frontend.
 
 ### 3.2 Frontend Layer (React)
@@ -45,15 +45,15 @@ The friction in this workflow is **Context Fragmentation**: users must manually 
 ## 4. Explicit Non-Goals
 *   **No Retrieval-Augmented Generation (RAG):** The project focuses on orchestration and schema translation, not document retrieval or vector search.
 *   **No Agentic Autonomy:** Models do not decide when to speak; they respond only to user-directed turns or hardcoded sequential pipelines.
-*   **No Multi-Vendor Paid Costs:** In v1, real API calls are strictly limited to the Google Gemini free tier. All other providers must be fully implemented via the Adapter Pattern but return stubbed data.
+*   **No Multi-Vendor Paid Costs:** In v1, real API calls are strictly limited to the Google Gemini free tier. All other providers must be fully implemented via the Adapter Pattern as Fake Providers returning stubbed data.
 *   **No Complex UI Animations:** Focus is on state consistency and message delivery, not high-fidelity chat aesthetics.
 
 ---
 
 ## 5. Success Criteria
 *   **Schema Translation Integrity:** Verification (via unit tests) that a single `CanonicalMessage` correctly transforms into `User/Assistant` pairs for OpenAI and `user/model` pairs for Gemini.
-*   **Turn-Taking Accuracy:** The system correctly routes an "@Gemini" request to the Google provider and an "@Claude" request to the Anthropic mock.
-*   **State Persistence:** A shared "Workflow State" is successfully updated after each turn and persisted in PostgreSQL, allowing for session resumption.
+*   **Turn-Taking Accuracy:** The system correctly routes an "@Gemini" request to the Google provider and an "@Claude" request to the Anthropic Fake Provider.
+*   **State Persistence:** A shared "WorkflowState" is successfully updated after each turn and persisted in PostgreSQL (with room status transitioning through `INITIALIZED`, `ACTIVE`, and `PAUSED`), allowing for session resumption.
 *   **Latency Management:** WebSockets broadcast model "typing" states and responses with <200ms overhead (excluding AI generation time).
 
 ---

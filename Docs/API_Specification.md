@@ -33,16 +33,60 @@ This document defines the public REST API and WebSocket contract for the **Concl
 | :--- | :--- | :--- | :--- | :--- |
 | `/` | `POST` | Creates a new meeting room | `RoomCreateRequest` | `RoomResponse` |
 | `/{id}` | `GET` | Fetches current room state | Path Variable `id` | `RoomResponse` |
-| `/{id}/registry` | `PUT` | Updates role-to-model mapping | `Map<String, String>` | `RoomResponse` |
+| `/{id}/role-assignments` | `PUT` | Updates role-to-model mapping | `List<RoleAssignmentDTO>` | `RoomResponse` |
 
 **`RoomCreateRequest`**:
 ```json
 {
   "name": "Project Apollo",
   "objective": "Drafting technical architecture",
-  "roleMapping": {
-    "Lead-Writer": "GEMINI_PRO",
-    "Code-Critic": "MOCK_CLAUDE"
+  "roleAssignments": [
+    {
+      "roleName": "Lead-Writer",
+      "modelId": "GEMINI_PRO",
+      "uiColorHex": "#E11D48"
+    },
+    {
+      "roleName": "Code-Critic",
+      "modelId": "FAKE_CLAUDE",
+      "uiColorHex": "#10B981"
+    }
+  ]
+}
+```
+
+**`RoleAssignmentDTO`**:
+```json
+{
+  "roleName": "String",
+  "modelId": "String",
+  "uiColorHex": "String"
+}
+```
+
+**`RoomResponse`**:
+```json
+{
+  "roomId": "UUID",
+  "name": "Project Apollo",
+  "objective": "Drafting technical architecture",
+  "status": "INITIALIZED | ACTIVE | PAUSED | ARCHIVED",
+  "roleAssignments": [
+    {
+      "roleName": "Lead-Writer",
+      "modelId": "GEMINI_PRO",
+      "uiColorHex": "#E11D48"
+    },
+    {
+      "roleName": "Code-Critic",
+      "modelId": "FAKE_CLAUDE",
+      "uiColorHex": "#10B981"
+    }
+  ],
+  "workflowState": {
+    "currentDraft": "String",
+    "reviewComments": "String",
+    "lastUpdatedAt": "ISO-8601"
   }
 }
 ```
@@ -55,7 +99,7 @@ This document defines the public REST API and WebSocket contract for the **Concl
 | `/message` | `POST` | User input (includes @-mentions) | `ChatMessageRequest` | `void (Async via WS)` |
 | `/{roomId}/history` | `GET` | Fetches canonical history | Query: `limit` | `List<MessageResponse>` |
 | `/pipeline/pause` | `POST` | Halts active model sequence | `{ "roomId" }` | `{ "status": "PAUSED" }` |
-| `/pipeline/resume`| `POST` | Restarts sequence from last state| `{ "roomId" }` | `{ "status": "RUNNING" }` |
+| `/pipeline/resume`| `POST` | Restarts sequence from last state| `{ "roomId" }` | `{ "status": "ACTIVE" }` |
 
 #### Key DTO Shapes:
 **`ChatMessageRequest`**:
@@ -71,9 +115,9 @@ This document defines the public REST API and WebSocket contract for the **Concl
 ```json
 {
   "messageId": "UUID",
-  "senderType": "USER | AI",
+  "senderType": "USER | AI | SYSTEM",
   "roleName": "Lead-Writer",
-  "modelUsed": "GEMINI_PRO",
+  "modelId": "GEMINI_PRO",
   "content": "...",
   "timestamp": "ISO-8601",
   "isMocked": false 
@@ -96,14 +140,14 @@ The backend pushes a payload to the topic whenever the room state changes.
 ```json
 {
   "type": "TURN_STARTED",
-  "role": "Code-Critic",
-  "model": "MOCK_CLAUDE",
+  "roleName": "Code-Critic",
+  "modelId": "FAKE_CLAUDE",
   "isMocked": true
 }
 ```
 
 **2. Message Delta Event** (Fires for streaming content):
-*Note: Real Gemini calls stream chunks; Mocked OpenAI/Claude calls simulate streaming with 50ms delays.*
+*Note: Real Gemini calls stream chunks; Fake OpenAI/Claude calls simulate streaming with 50ms delays.*
 ```json
 {
   "type": "CONTENT_CHUNK",
@@ -125,20 +169,29 @@ The backend pushes a payload to the topic whenever the room state changes.
 }
 ```
 
+**4. System Intervention Event** (Fires when a user intervenes in the pipeline):
+```json
+{
+  "type": "SYSTEM_INTERVENTION",
+  "messageId": "UUID",
+  "content": "User intervention text..."
+}
+```
+
 ---
 
-## 6. Implementation Notes: Real vs. Mocked
+## 6. Implementation Notes: Real vs. Fake
 
-| Feature | Provider: **Gemini** | Provider: **OpenAI / Claude** |
+| Feature | Live Provider: **Gemini** | Fake Provider: **OpenAI / Claude** |
 | :--- | :--- | :--- |
-| **Inference Type** | **Real API Call** (Google Vertex/AI) | **Mocked Bean** (Internal Stub) |
+| **Inference Type** | **Real API Call** (Google Vertex/AI) | **Fake ChatClient** (Internal Stub) |
 | **Latency** | 2s - 8s (Variable) | 1s - 3s (Simulated) |
 | **Streaming** | Real server-sent events | Local iterative broadcast |
 | **Token Tracking** | Metadata from API response | Character-based heuristic |
 | **Auth** | API Key required in `.env` | No external auth required |
 
 ### Intervention Logic
-When `/chat/message` is called with `isIntervention: true`, the system:
-1.  Appends the message to the `CanonicalHistory`.
+When `POST /chat/message` is called with `isIntervention: true`, the system:
+1.  Appends the message to the `conversation_history`.
 2.  Forces a re-summarization of the `WorkflowState`.
 3.  Broadcasts a `SYSTEM_INTERVENTION` event via WebSocket to signal to all clients that the pipeline context has been manually altered.

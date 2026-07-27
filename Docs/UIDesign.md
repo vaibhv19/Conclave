@@ -9,7 +9,7 @@ This document defines the governing visual design system for **Conclave**. The f
 Conclave is not a passive chat app; it is a collaborative workspace where the user is the moderator. The UI must solve the "Who said what?" and "Who is next?" problems through explicit visual hierarchy.
 
 ### Core Principles:
-*   **Role Sovereignty:** Every model must be visually distinct based on its assigned **Role**, not just its Provider name. A "Lead Writer" (Gemini) should look different from a "Reviewer" (Mock-Claude).
+*   **Role Sovereignty:** Every model must be visually distinct based on its assigned **Role**, not just its Provider name. A "Lead Writer" (Gemini) should look different from a "Reviewer" (Fake Claude).
 *   **Intent Clarity:** Before a message is sent, the UI must clearly highlight the *target* of the turn. The "@-mention" isn't just text; it’s a routing command.
 *   **State Awareness:** The user must always see the "Shared Context" (WorkflowState) that the models are using to generate their responses.
 *   **Active Suspension:** The "Pause & Intervene" state must feel like a deliberate, controlled halt (a "Safety"), not a system hang or error.
@@ -51,8 +51,8 @@ Conclave requires a palette that can support at least 4-5 distinct "Role Colors"
 
 ## 3. Key Screens & Component Design
 
-### 3.1 Role-to-Model Matrix (Room Setup)
-*   **Design:** A "Deck" of cards. Each card represents a **Role** (e.g., Lead-Writer). The user uses a dropdown on the card to select a **Provider** (Gemini, Mock-OpenAI, etc.).
+### 3.1 Role Mapping (Room Setup)
+*   **Design:** A "Deck" of cards. Each card represents a **Role** (e.g., Lead-Writer). The user uses a dropdown on the card to select a **Model/Provider** (Gemini, Fake-OpenAI, etc.) to establish the room's Role Mapping.
 *   **Visual Cue:** When a provider is selected, the card’s border glows with that role's unique color. This establishes the visual "identity" of that model for the rest of the session.
 
 ### 3.2 The Multi-Bubble Chat Room
@@ -84,13 +84,13 @@ Conclave requires a palette that can support at least 4-5 distinct "Role Colors"
 *   **Design:** Instead of a generic spinner, Conclave uses a **"Pulse Badge."**
 *   **Logic:**
     *   **Real Gemini:** Shows a slow, steady pulse while the API processes.
-    *   **Mocked Providers:** Shows the same pulse, but for a fixed "Simulated Thinking" duration (e.g., 1.5s).
-*   **Rationale:** To the user, there should be **zero visual difference** between real and mocked providers. This proves the "Unification" thesis—the UI treats all participants as equal entities.
+    *   **Fake Providers:** Shows the same pulse, but for a fixed "Simulated Thinking" duration (e.g., 1.5s).
+*   **Rationale:** To the user, there should be **zero visual difference** between live and fake providers. This proves the "Unification" thesis—the UI treats all participants as equal entities.
 
 ### 4.3 Model Metadata Badges
 *   **Context:** For reviewers/recruiters.
 *   **Design:** A small info-icon next to the model name. On hover, it shows:
-    *   `Latency: 1.2s`
-    *   `Provider: Mock-OpenAI`
-    *   `Tokens: 142 (Simulated)`
+    *   `latency: 1.2s`
+    *   `modelId: FAKE_GPT`
+    *   `isMocked: true`
 *   **Goal:** To prove the backend is actually tracking metrics even for the mocked turns.

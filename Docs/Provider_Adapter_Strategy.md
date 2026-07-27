@@ -10,15 +10,13 @@ To prevent vendor lock-in and enable cross-model history, Conclave stores all in
 **`CanonicalMessage` Structure:**
 ```json
 {
-  "id": "UUID",
-  "senderRole": "USER | AI | SYSTEM",
-  "participantName": "String (e.g., 'Lead-Writer')",
+  "messageId": "UUID",
+  "senderType": "USER | AI | SYSTEM",
+  "roleName": "String (e.g., 'Lead-Writer')",
+  "modelId": "String (e.g., 'GEMINI_PRO')",
   "content": "String (Markdown)",
   "timestamp": "ISO-8601",
-  "metadata": {
-    "modelId": "String",
-    "tokenCount": "Integer"
-  }
+  "isMocked": "Boolean"
 }
 ```
 
@@ -54,7 +52,7 @@ public interface ProviderAdapter {
 
 ---
 
-## 4. OpenAI Adapter (Mocked implementation)
+## 4. OpenAI Adapter (Fake implementation)
 **Constraint:** OpenAI uses a "Flat-array" structure with a dedicated system role.
 
 *   **Role Mapping:** 
@@ -62,11 +60,11 @@ public interface ProviderAdapter {
     *   `AI` → `assistant`
     *   `SYSTEM` → `system`
 *   **Structure:** Direct object-level content.
-*   **Mock Verification:** Even though the API call is stubbed, the `toProviderFormat` logic is unit-tested to ensure it generates a valid OpenAI JSON payload. The mock response returns a serialized OpenAI `ChatCompletion` object, which is then passed through `fromProviderFormat` to test the full normalization round-trip.
+*   **Fake Verification:** Even though the API call is stubbed, the `toProviderFormat` logic is unit-tested to ensure it generates a valid OpenAI JSON payload. The fake response returns a serialized OpenAI `ChatCompletion` object, which is then passed through `fromProviderFormat` to test the full normalization round-trip.
 
 ---
 
-## 5. Claude Adapter (Mocked implementation)
+## 5. Claude Adapter (Fake implementation)
 **Constraint:** Anthropic Claude requires the System prompt to be a **top-level parameter**, not a message within the array.
 
 *   **Role Mapping:** 
@@ -83,20 +81,20 @@ public interface ProviderAdapter {
 To minimize costs and avoid context-window saturation, Conclave does not pass the full conversation history to every model. Instead, it passes a summarized `WorkflowState`.
 
 **The `WorkflowState` Object:**
-1.  **Project Objective:** The static high-level goal.
-2.  **Current Draft:** The latest version of the primary output (e.g., the code or article).
-3.  **Review Comments:** A cumulative list of "pending fixes" identified by previous models.
-4.  **Short-Term Memory:** Only the last **2 messages** for immediate conversational flow.
+1.  **Project Objective:** The static high-level goal (resolved from `rooms.objective` in the database).
+2.  **Current Draft:** The latest version of the primary output (stored in `workflow_state.current_draft`).
+3.  **Review Comments:** A cumulative list of "pending fixes" identified by previous models (stored in `workflow_state.review_comments`).
+4.  **Short-Term Memory:** Only the last **2 messages** for immediate conversational flow (loaded dynamically from `conversation_history`).
 
 **Summarization Trigger:**
-When the `CanonicalHistory` exceeds 10 messages, the backend triggers an internal "Janitor" turn (using Gemini) to update the **Current Draft** and **Review Comments** fields, then purges the middle of the history. The adapters then only package the `WorkflowState` + 2 recent messages for the next model.
+When the `conversation_history` exceeds 10 messages, the backend triggers an internal "Janitor" turn (using Gemini) to update the **Current Draft** and **Review Comments** fields, then purges the middle of the history. The adapters then only package the `WorkflowState` + 2 recent messages for the next model.
 
 ---
 
-## 7. Extension Path: Mock-to-Real Swap
-The architecture is designed so that moving OpenAI or Claude from "Mock" to "Live" is a zero-code change for the business logic.
+## 7. Extension Path: Fake-to-Live Swap
+The architecture is designed so that moving OpenAI or Claude from "Fake" to "Live" is a zero-code change for the business logic.
 
-*   **The Switch:** Using Spring `@Profiles` or `@ConditionalOnProperty`, the application swaps the `FakeOpenAiChatClient` bean for the real `OpenAiChatClient` provided by Spring AI.
+*   **The Switch:** Using Spring `@Profiles` or `@ConditionalOnProperty`, the application swaps the `FakeChatClient` bean (e.g. `FakeOpenAiChatClient`) for the real provider bean provided by Spring AI.
 *   **The Contract:** Because the `OpenAiAdapter` already produces and consumes the correct OpenAI-shaped JSON, the logic remains identical.
 *   **Interview Proof:** This demonstrates **Dependency Inversion**. The Orchestrator depends on the `ProviderAdapter` interface, not the implementation. Adding a real API key simply activates the network transport layer; the data translation logic is already verified in v1.
 
