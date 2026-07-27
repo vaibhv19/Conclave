@@ -31,4 +31,29 @@ public class Room {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private RoomStatus status;
+
+    @Column(name = "pipeline_sequence", columnDefinition = "TEXT")
+    private String pipelineSequence;
+
+    @Column(name = "current_pipeline_index")
+    private Integer currentPipelineIndex;
+
+    public java.util.List<String> getPipelineSequenceList() {
+        if (pipelineSequence == null || pipelineSequence.trim().isEmpty()) {
+            return java.util.List.of();
+        }
+        // split by comma, and trim each role name
+        return java.util.Arrays.stream(pipelineSequence.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    public void setPipelineSequenceList(java.util.List<String> sequence) {
+        if (sequence == null) {
+            this.pipelineSequence = null;
+        } else {
+            this.pipelineSequence = String.join(",", sequence);
+        }
+    }
 }
