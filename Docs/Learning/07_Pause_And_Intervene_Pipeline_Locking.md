@@ -1,90 +1,45 @@
-# Pipeline Control: Pause, Intervene & Pessimistic Locking
+# Learning 07: Pause & Intervene Pipeline Locking
 
-This document outlines the architecture, concurrency model, and state transitions used to manage sequentially executed AI model pipelines in Conclave.
+## 1. Problem Statement
+In a sequential multi-agent execution pipeline (e.g., Writer -> Editor -> Critic), the backend auto-advances the turn when a model completes its generation. However, if a user spots a mistake and wants to pause execution or inject corrections (intervene) immediately, race conditions arise if the next model starts generating simultaneously. The system needs a thread-safe locking mechanism to stop the pipeline instantly.
 
-## 1. Concurrency Model: Pessimistic Write Locking
+## 2. Decision Rationale
+We implemented a database-backed **Pessimistic Write Lock** strategy combined with a **Pipeline Control State Manager**:
+- By querying `RoomRepository.findWithLockById(UUID roomId)` with a pessimistic write lock (`PESSIMISTIC_WRITE`), we block concurrent threads from advancing the room pipeline state.
+- If a pause request is received, the lock ensures that the currently executing thread updates the status to `PAUSED` and halts next-step scheduler queues.
 
-To coordinate multi-agent sequential pipeline flows and prevent race conditions (e.g. a user pausing a pipeline or submitting feedback while an AI agent is in the middle of streaming a response), Conclave utilizes **Pessimistic Write Locking** at the database level.
+## 3. Alternatives Considered
+- **In-Memory Thread Flags (ConcurrentHashMap):** Rejected because in-memory flags do not scale horizontally across cluster nodes and lose state consistency during server restarts.
+- **Optimistic Locking (@Version):** Rejected because optimistic locks fail silently with an exception upon conflict, rather than blocking the execution flow to check status flags.
 
-When a pipeline state transition is requested or an AI turn begins:
-1. The transaction calls `RoomRepository.findWithLockById(roomId)`.
-2. Hibernate translates this into a database-level write lock query:
-   ```sql
-   SELECT ... FROM rooms WHERE id = ? FOR UPDATE;
-   ```
-3. Any concurrent requests (e.g., REST requests to pause/resume or additional user messages) targeting the same room ID are blocked until the lock-holding transaction commits or rolls back.
+## 4. Internal Working
+1.  **Lock Acquisition:** When an AI turn starts or completes, `PipelineManager` locks the room row in the DB.
+2.  **State Audit:** The orchestrator checks if status has transitioned to `PAUSED` or if the user injected an intervention.
+3.  **Halt or Advance:** If status is `ACTIVE` and not at the end of the sequence, the pipeline schedules the next role Async. If `PAUSED`, it stops and releases the lock.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User
-    participant ChatController
-    participant PipelineManager
-    participant DB as Database (Pessimistic Lock)
+## 5. Conclave Implementation
+- Pessimistic write lock queries are defined in [RoomRepository.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/repository/RoomRepository.java).
+- Room pipeline controls (pause, resume) are managed by [PipelineManagerImpl.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/service/PipelineManagerImpl.java).
+- Orchestration loop execution is governed by [MessageOrchestratorImpl.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/service/MessageOrchestratorImpl.java).
 
-    User->>ChatController: POST /pipeline/pause
-    activate ChatController
-    ChatController->>PipelineManager: pausePipeline(roomId)
-    activate PipelineManager
-    PipelineManager->>DB: findWithLockById(roomId) (SELECT ... FOR UPDATE)
-    activate DB
-    Note over DB: Lock acquired on Room row.
-    DB-->>PipelineManager: Room Entity
-    deactivate DB
-    PipelineManager->>PipelineManager: Validate State & Owner
-    PipelineManager->>DB: Save updated status (PAUSED)
-    PipelineManager-->>ChatController: Room Entity
-    deactivate PipelineManager
-    ChatController-->>User: 200 OK (Status: PAUSED)
-    deactivate ChatController
-```
+## 6. Key Classes
+- [RoomRepository.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/repository/RoomRepository.java) - Declares Pessimistic DB Lock queries.
+- [PipelineManagerImpl.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/service/PipelineManagerImpl.java) - Holds pause, resume, ownership validations.
+- [MessageOrchestratorImpl.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/service/MessageOrchestratorImpl.java) - Auto-advances sequential pipelines.
 
----
+## 7. Common Pitfalls
+- **Deadlock Risks:** If multiple threads try to acquire locks on multiple rooms in different order, deadlocks can happen. Ensure database locks are only acquired per single room ID.
+- **Long-Running Database Transactions:** Keeping a transaction open during LLM API call network I/O stalls database resources. The lock must only be held briefly while updating status or indexing indices.
 
-## 2. Room Pipeline State Transitions
+## 8. Debugging Tips
+- Trace lock acquisitions by checking Hibernate SQL console statements (`select ... for update`).
+- Monitor thread states inside `PipelineManagerImpl` logs during Pause / Resume controls validation.
 
-The room state machine enforces strict execution rules. The single authority of execution state is the `PipelineManager`.
+## 9. Interview Questions
+1.  *Why did you select Pessimistic DB locking over Optimistic locking for Conclave's pipeline control system?*
+2.  *How do you prevent database transaction pool exhaustion when a model is taking a long time to call external LLM APIs?*
+3.  *What happens to the sequential sequence when a user submits an intervention message while the status is PAUSED?*
 
-### Allowed Transitions:
-*   `INITIALIZED` $\rightarrow$ `ACTIVE`: Triggered when execution starts or the first user message with an agent mention is sent.
-*   `ACTIVE` $\rightarrow$ `PAUSED`: Triggered when an explicit pause request is received, or a user sends an intervention message (`isIntervention: true`).
-*   `PAUSED` $\rightarrow$ `ACTIVE`: Triggered when the user invokes the resume endpoint, advancing the pipeline to the next agent in the sequence.
-*   `ACTIVE` $\rightarrow$ `ARCHIVED`: Triggered when the room is closed or archived.
-
-Any other transition (e.g. `INITIALIZED` $\rightarrow$ `PAUSED` or `ARCHIVED` $\rightarrow$ `ACTIVE`) is rejected with an `OrchestrationException`.
-
-```mermaid
-stateDiagram-v2
-    [*] --> INITIALIZED
-    INITIALIZED --> ACTIVE : Send Mention / Resume
-    ACTIVE --> PAUSED : Pause Pipeline / Intervention
-    PAUSED --> ACTIVE : Resume Pipeline
-    ACTIVE --> ARCHIVED : Archive Room
-    PAUSED --> ARCHIVED : Archive Room
-    ARCHIVED --> [*]
-```
-
----
-
-## 3. User Intervention Flow
-
-If the user intervenes in a pipeline execution (e.g., they disagree with the output direction of a model), they send a message with `isIntervention: true`:
-1. The room is locked and its status is set to `PAUSED`.
-2. The user feedback is appended to the history.
-3. The Context Janitor (`WorkflowStateService.evaluateAndCompressHistory`) is immediately triggered to rebuild the draft and review comments based on the updated feedback.
-4. The updated summaries are broadcast to all subscribers via the WebSocket destination `/topic/room/{roomId}` in a `SYSTEM_INTERVENTION` event.
-5. All further sequential execution is halted until the user explicitly calls the `POST /pipeline/resume` endpoint.
-
----
-
-## 4. Sequential Auto-Advance Sequencer Loop
-
-When the room status is `ACTIVE` and there is a configured `pipelineSequence` (e.g., `["Lead-Writer", "Code-Critic"]`):
-1. Upon completing a turn, the orchestrator re-acquires a pessimistic write lock on the room.
-2. It verifies if the room status is still `ACTIVE`.
-3. If yes, it increments `currentPipelineIndex`.
-4. If the new index is less than the sequence size, it retrieves the next role name and schedules the next turn asynchronously:
-   ```java
-   self.executeStreamingTurn(roomId, nextRoleName, promptContent);
-   ```
-5. Each turn executes in its own transaction on a dedicated Virtual Thread, ensuring high throughput and keeping resource locking durations minimal.
+## 10. References
+- [Java Platform Locking Guide](https://docs.oracle.com/javase/tutorial/essential/concurrency/locksync.html)
+- [Baeldung: Hibernate Pessimistic Locking](https://www.baeldung.com/jpa-pessimistic-locking)

@@ -29,7 +29,7 @@ export default function Sidebar({
     }, [workflowState.reviewComments]);
 
     return (
-        <div className={`relative flex flex-col h-full bg-slate-900/40 border border-slate-800/60 rounded-2xl shadow-xl backdrop-blur-sm transition-all duration-300 ${
+        <aside className={`relative flex flex-col h-full bg-slate-900/40 border border-slate-800/60 rounded-2xl shadow-xl backdrop-blur-sm transition-all duration-300 ${
             collapsed ? 'w-12' : 'w-full md:w-80'
         }`}>
             {/* Collapse toggle button */}
@@ -128,6 +128,6 @@ export default function Sidebar({
                     </div>
                 </div>
             )}
-        </div>
+        </aside>
     );
 }

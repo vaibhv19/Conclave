@@ -1,76 +1,45 @@
-# Model Registry & Simulated ChatClients Architecture
+# Learning 04: Model Registry & Fake ChatClients
 
-This document outlines the architectural design and design defense for using simulated "Fake" clients instead of network mocking (e.g. WireMock), simulated latency, token estimation rules, and instructions for transitioning from simulated to live API endpoints.
+## 1. Problem Statement
+Running end-to-end integration tests and building UI layouts with actual LLM API endpoints introduces high billing costs, latency spikes, and network dependencies. If model API limits are reached, the local test suites fail. Furthermore, developers need a way to run and test model executions locally without requiring active API keys.
 
----
+## 2. Decision Rationale
+We implemented a **Model Registry** pattern combined with **Fake ChatClients** (mock adapters):
+- A centralized Model Registry tracks available model engines and dynamically resolves the appropriate `ChatClient` bean at runtime based on the configured room model.
+- Fake clients simulate streaming responses chunk-by-chunk over WebSockets, reproducing latency characteristics and token counts of actual LLM responses locally without performing external network requests.
 
-## 1. Design Defense: Fake Clients vs. Network Mocking
+## 3. Alternatives Considered
+- **WireMock Mock Server:** Rejected because mock HTTP servers do not execute standard internal java mapper mappings, making it harder to test Java-side data translations and sequential state transitions.
+- **Direct Spring Profiling (@Profile):** Rejected because it locks the backend to one provider globally. We need different model types running simultaneously in a single chat room.
 
-### 1.1 The Challenge of Network Mocking in Early Development
-While tools like WireMock are excellent for integration testing of external HTTP calls, they introduce several drawbacks when simulating complex AI behavior during initial phases:
-1. **Network Overhead:** Network mocks require starting HTTP servers (even local ones) which slows down local development and unit tests.
-2. **Brittle Schemas:** Hardcoded HTTP responses easily break when external API schemas evolve.
-3. **Complexity of Streaming:** Simulating Server-Sent Events (SSE) or chunked streams via WireMock requires complex HTTP protocol mocking that distracts from core domain orchestration.
-4. **API Key Dependency:** Autoconfigured client starters often require active connections or credential validation during startup, resulting in early crashes.
+## 4. Internal Working
+1.  **Registry Mapping:** When the orchestrator processes a role turn, it queries `ModelRegistry.getAdapter(modelId)`.
+2.  **Dynamic Resolution:** The registry holds a key-value mapping of model identifiers (e.g. `GEMINI_PRO`, `FAKE_OPENAI`) to their corresponding bean implementations.
+3.  **Chunk Generation:** Fake clients generate a responsive sentence, split it into chunks, and use Virtual Threads / scheduler queues to simulate realistic word-by-word typing latency.
 
-### 1.2 The Solution: Custom Fakes
-By implementing Spring AI's standard `ChatModel` interface directly (e.g. `FakeOpenAiChatClient` and `FakeClaudeChatClient`), we achieve:
-- **Zero Network Dependency:** Booting the application requires no external endpoint connectivity or WireMock setup.
-- **Type Safety:** Compilation checks ensure our simulated clients always match Spring AI's expected interfaces.
-- **In-Memory Simulations:** Non-blocking Reactor stream chunking runs purely in memory, resulting in sub-millisecond execution times in unit tests.
-- **Graceful API Key Fallback:** If Vertex AI Gemini keys are missing, the application context automatically falls back to an in-memory Gemini model, preventing startup crash.
+## 5. Conclave Implementation
+- Available models and mapping keys are tracked inside [ModelRegistry.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/registry/ModelRegistry.java).
+- Standard Gemini endpoints are integrated in [GeminiChatClient.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/client/GeminiChatClient.java).
+- Simulated fakes are implemented inside [FakeOpenAiChatClient.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/client/FakeOpenAiChatClient.java) and [FakeClaudeChatClient.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/client/FakeClaudeChatClient.java).
 
----
+## 6. Key Classes
+- [ModelRegistry.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/registry/ModelRegistry.java) - Orchestrates model mapping resolutions.
+- [FakeOpenAiChatClient.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/client/FakeOpenAiChatClient.java) - Simulates GPT-4o streaming.
+- [FakeClaudeChatClient.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/client/FakeClaudeChatClient.java) - Simulates Claude Sonnet streaming.
 
-## 2. Simulation Specifications
+## 7. Common Pitfalls
+- **Unregistered Model Identifier:** If a room setup includes a model ID not mapped inside the `ModelRegistry`, the pipeline throws an `OrchestrationException` at runtime.
+- **Mock Latency Thread Blocks:** Using `Thread.sleep` inside mock clients block physical platform threads unless run inside virtual threads or asynchronous executors.
 
-### 2.1 Latency Simulation
-- **Non-Streaming Calls:** Executing `call(Prompt)` blocks the executing thread for exactly **1.5 seconds** (`Thread.sleep(1500)`) to simulate the typical network round-trip of a medium-sized LLM response.
-- **Streaming Chunks:** Executing `stream(Prompt)` emits tokens (words) one-by-word separated by a **50ms** reactive delay (`delayElements(Duration.ofMillis(50))`) to simulate the token-by-token rendering on the frontend.
+## 8. Debugging Tips
+- Trace model resolution by placing a logger point inside `ModelRegistry.getAdapter`.
+- Toggle profile switches inside application properties to verify fake client mappings.
 
-### 2.2 Token Estimation Heuristic
-To provide realistic performance metrics without complex byte counting, fakes calculate simulated usage using a standard length heuristic:
-$$\text{Tokens} = \frac{\text{Length of content (characters)}}{4}$$
+## 9. Interview Questions
+1.  *How does the ModelRegistry resolve the appropriate client bean at runtime in Conclave?*
+2.  *How do your Fake ChatClients simulate streaming latency chunk-by-chunk without blocking the platform thread pool?*
+3.  *What exception is thrown when a user triggers a turn using an unsupported model ID, and how is it handled?*
 
-- **Input Tokens:** Calculated based on the prompt's unified contents character length.
-- **Output (Generation) Tokens:** Calculated based on the generated mock Markdown character length.
-- **Metadata Injection:** Standard Spring AI `Usage` metadata is populated and injected into the final chunk of streaming responses, or in the root of non-streaming responses.
-
----
-
-## 3. Transitioning from Fakes to Live Clients
-
-The system is designed with **Dependency Inversion** so that transitioning from "Fake" to "Live" requires zero modifications to business logic.
-
-### 3.1 Swapping Configs
-To activate live OpenAI and Claude clients:
-1. Update `backend/pom.xml` to include Spring AI starters for OpenAI and Anthropic:
-   ```xml
-   <dependency>
-       <groupId>org.springframework.ai</groupId>
-       <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
-   </dependency>
-   <dependency>
-       <groupId>org.springframework.ai</groupId>
-       <artifactId>spring-ai-anthropic-spring-boot-starter</artifactId>
-   </dependency>
-   ```
-2. Update `SpringAiConfig.java` to inject the autoconfigured `OpenAiChatModel` and `AnthropicChatModel` beans rather than instantiating the fakes:
-   ```java
-   @Bean
-   @Qualifier("openAiChatClient")
-   public ChatClient openAiChatClient(OpenAiChatModel openAiChatModel) {
-       return ChatClient.create(openAiChatModel);
-   }
-
-   @Bean
-   @Qualifier("claudeChatClient")
-   public ChatClient claudeChatClient(AnthropicChatModel anthropicChatModel) {
-       return ChatClient.create(anthropicChatModel);
-   }
-   ```
-3. Supply active API keys in `.env.local` or environment variables:
-   - `SPRING_AI_OPENAI_API_KEY`
-   - `SPRING_AI_ANTHROPIC_API_KEY`
-
-Because the `ModelRegistry` continues to resolve qualified `ChatClient` beans by qualifier, the orchestration engine remains completely unaffected by the transition to live APIs.
+## 10. References
+- [Spring Dependency Injection Registry Pattern](https://spring.io)
+- [Reactive Streams Spec: Publisher & Subscriber](https://www.reactive-streams.org/)

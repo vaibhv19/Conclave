@@ -4,7 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 @ResponseStatus(HttpStatus.BAD_REQUEST)
-public class TranslationException extends RuntimeException {
+public class TranslationException extends ConclaveException {
     public TranslationException(String message) {
         super(message);
     }

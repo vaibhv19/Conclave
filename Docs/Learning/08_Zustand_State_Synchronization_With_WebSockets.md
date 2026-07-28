@@ -1,86 +1,47 @@
-# State Management & WebSocket Synchronization with Zustand
+# Learning 08: Zustand State Synchronization with WebSockets
 
-This document outlines the architecture, data flows, and design patterns utilized in Conclave to synchronize global frontend client state with real-time Spring Boot WebSocket / STOMP brokers.
+## 1. Problem Statement
+Handling real-time token streaming chunks and async pipeline events (like turn start, completed, system intervention) requires responsive client-side state updates. Using standard React `useState` hooks inside components results in complex prop drilling, re-render cascades, and state synchronization failures when sockets close or reconnect.
 
----
+## 2. Decision Rationale
+We chose **Zustand** as the global state store unified with `@stomp/stompjs`:
+- Zustand provides a lightweight, external state store that does not suffer from React context performance bottlenecks.
+- Enables direct mutations from WebSocket callback listeners (`websocket.js`) without requiring React rendering context.
+- Maintains clean separation of concerns: UI views only subscribe to state variables, while business logic resides inside stores.
 
-## 1. Global State Stores with Zustand
+## 3. Alternatives Considered
+- **Redux Toolkit:** Rejected due to excessive boilerplate (actions, reducers, payload creators) which is overkill for a lightweight collaborative chat.
+- **Context API:** Rejected because Context API triggers re-renders on all subscribing elements, resulting in significant latency lag during word-by-word real-time chunk streaming.
 
-Conclave uses **Zustand** for lightweight, decentralized global state management. Frontend state is divided into three distinct modules to maintain separation of concerns:
+## 4. Internal Working
+1.  **Event Subscription:** When a room page mounts, `connectWebSocket(roomId)` initiates connection.
+2.  **Callback Interception:** The socket listener receives a STOMP frame and parses the event type payload.
+3.  **Zustand Dispatch:** Callbacks directly trigger store actions (e.g. `chatStore.handleContentChunk(body)`), updating store state instantly.
+4.  **UI Render:** Subscribing UI elements re-render only the updated text component, preventing page-wide layouts redraw.
 
-```
-                  ┌───────────────┐
-                  │   authStore   │ ◄──── Persistence in LocalStorage
-                  └───────┬───────┘
-                          │
-            ┌─────────────┴─────────────┐
-            ▼                           ▼
-    ┌───────────────┐           ┌───────────────┐
-    │   roomStore   │           │   chatStore   │ ◄──── single source of truth for STOMP events
-    └───────────────┘           └───────────────┘
-```
+## 5. Conclave Implementation
+- Global stores are split into [authStore.js](file:///d:/Coding/Projects----For%20Resume/Conclave/frontend/src/store/authStore.js), [roomStore.js](file:///d:/Coding/Projects----For%20Resume/Conclave/frontend/src/store/roomStore.js), and [chatStore.js](file:///d:/Coding/Projects----For%20Resume/Conclave/frontend/src/store/chatStore.js).
+- Event mappings to store dispatchers are configured in [websocket.js](file:///d:/Coding/Projects----For%20Resume/Conclave/frontend/src/services/websocket.js).
+- Visual UI bindings are rendered in [RoomView.jsx](file:///d:/Coding/Projects----For%20Resume/Conclave/frontend/src/views/RoomView.jsx).
 
-1.  **`authStore`**: Manages user profiles and JWT token state. Persists token credentials inside `localStorage` for session maintenance.
-2.  **`roomStore`**: Coordinates room creation (`POST /api/rooms`) and active room selector caching.
-3.  **`chatStore`**: Holds active room message lists, current `WorkflowState` (draft & review comments), token usage metrics, and streaming chunk states.
+## 6. Key Classes
+- [chatStore.js](file:///d:/Coding/Projects----For%20Resume/Conclave/frontend/src/store/chatStore.js) - Manages message arrays and active generating states.
+- [websocket.js](file:///d:/Coding/Projects----For%20Resume/Conclave/frontend/src/services/websocket.js) - Handles connection activations and topic subscriptions.
+- [RoomView.jsx](file:///d:/Coding/Projects----For%20Resume/Conclave/frontend/src/views/RoomView.jsx) - Main view subscribing to store selectors.
 
----
+## 7. Common Pitfalls
+- **Circular Store Dependencies:** Accessing state stores inside helper utilities before initialization can trigger undefined references. Utilize `useChatStore.getState()` instead of direct hook calls in non-react files.
+- **Memory Leak Subscriptions:** Subscribing to WebSockets on mount without calling `disconnect` on unmount results in duplicate socket listeners. Always call cleanup in React `useEffect` unmount blocks.
 
-## 2. WebSocket Real-time STOMP Interceptors & State Mapping
+## 8. Debugging Tips
+- Trace store updates by console logging state shifts inside Zustand selectors.
+- Check incoming socket traffic inside browser Network tool tabs to confirm chunk events are dispatching.
 
-The WebSocket client (`websocket.js`) acts as a wrapper around the `@stomp/stompjs` client, responsible for session lifecycle, handshakes, and event propagation.
+## 9. Interview Questions
+1.  *Why did you select Zustand over React Context API for Conclave's real-time streaming state synchronization?*
+2.  *How do you decouple websocket event callback listeners from React's component lifecycles in this codebase?*
+3.  *How do you prevent duplicate socket subscriptions when a user switches rapidly between rooms?*
 
-### Connection Handshake
-Upon selecting a room, `websocket.js` initiates a STOMP session over raw WebSockets at `ws://localhost:8080/ws-conclave`:
-*   Reads the JWT from `authStore.getState().token`.
-*   Injects the credential into standard STOMP header fields:
-    ```javascript
-    connectHeaders: {
-        Authorization: `Bearer ${token}`
-    }
-    ```
-
-### Message Subscription & Action Dispatch
-The WebSocket client subscribes to `/topic/room/{roomId}`. Received JSON payloads are parsed and mapped to `chatStore` actions:
-
-```mermaid
-graph TD
-    WS[WebSocket STOMP Broker] -->|Frame| Conn[websocket.js]
-    Conn -->|Parse Body| Dispatch{Event Type}
-
-    Dispatch -->|TURN_STARTED| TS[chatStore.handleTurnStarted]
-    Dispatch -->|CONTENT_CHUNK| CC[chatStore.handleContentChunk]
-    Dispatch -->|TURN_COMPLETED| TC[chatStore.handleTurnCompleted]
-    Dispatch -->|SYSTEM_INTERVENTION| SI[chatStore.handleSystemIntervention]
-
-    TS -->|Add thinking placeholder| MsgList[messages list]
-    CC -->|Append text increment delta| MsgList
-    TC -->|Finalize content & update token metrics| MsgList
-    SI -->|Set pipeline status to PAUSED| WState[WorkflowState]
-```
-
----
-
-## 3. Resilience: Reconnect Logic & Dropped Frames Sync
-
-WebSockets are transport channels prone to network disruptions. Conclave implements three levels of synchronization resilience to handle dropped connections:
-
-### 3.1. Automatic STOMP Reconnect Loops
-The `@stomp/stompjs` client is configured with a `reconnectDelay`:
-```javascript
-reconnectDelay: 5000
-```
-If the connection drops (e.g. temporary server shutdown, network switch), the STOMP manager automatically initiates a connection handshake retry every 5 seconds.
-
-### 3.2. State Synchronization on Connection Restored
-When connection is restored, the STOMP `onConnect` handler triggers the subscription setup callback. Since frames may have been missed during the offline period:
-*   The `onConnect` callback immediately triggers a fetch call to:
-    ```
-    GET /api/rooms/{roomId}
-    ```
-*   This pulls the latest consolidated `WorkflowState` (current draft summary + critic reviews) from the database to synchronize the sidebar.
-
-### 3.3. Session Cleanup on Logout
-To prevent memory leaks and dangling socket connections:
-*   Calling `authStore.logout()` immediately triggers `disconnectWebSocket()`.
-*   This terminates the connection, unsubscribes active paths, and purges the cached STOMP client instance.
+## 10. References
+- [Zustand Documentation](https://zustand-demo.pmnd.rs/)
+- [Playwright WebSockets Mocking Guide](https://playwright.dev/docs/network#mock-websockets)
