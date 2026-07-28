@@ -55,12 +55,14 @@ Conclave enforces a clear hierarchy based on size, weights, and tracking:
 
 ---
 
-## 4. Spacing & Grid System
+## 4. Spacing, Grid System, & Container Reduction
 
-All layouts conform to a tight, high-density padding grid to emulate native desktop software rather than a generic SaaS website:
-- **Inner Padding**: `p-2` (8px), `p-3.5` (14px), `p-5` (20px).
-- **Section Separators**: Thin `1px` borders replacing default margin gaps.
-- **Card Radii**: Clean `rounded-lg` (8px) on form elements/buttons, and `rounded-xl` (12px) on main cards.
+To match premium layout tools like Trajectory, Linear, and Cursor Settings, Conclave reduces reliance on nested card blocks and border wrappers:
+- **Continuous Surface Flow**: Avoids enclosing form components inside heavy bordered panels. Section margins (`mb-12`) and thin horizontal lines (`border-t border-brand-border/60 pt-12`) separate logical scopes.
+- **AI Execution Pipeline List**: Renders model and color mappings as a clean list of grid rows (similar to a GitHub file list or Linear issue tracker) instead of individual card blocks, separating them with `divide-y divide-brand-border/60`.
+- **Inner Padding**: Padding inside panels is minimized (e.g. `p-5` in sidebars), while open breathing spaces (`pt-16 pb-12` in setup forms) are maximized.
+- **Card Radii**: Card corners are limited to form buttons/inputs (`rounded`) and standard outer login blocks (`rounded-xl`).
+- **Quiet Elements**: Secondary button styles are kept minimal (e.g. transparent background with thin border boundaries) to ensure the primary initialize buttons command direct focus.
 
 ---
 
