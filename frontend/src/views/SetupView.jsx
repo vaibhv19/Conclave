@@ -100,7 +100,7 @@ export default function SetupView() {
 
             {/* Content Container */}
             <main className="flex-1 max-w-3xl mx-auto px-6 pt-16 pb-12 w-full">
-                <div className="mb-8 border-b border-brand-border pb-6">
+                <div className="mb-12 border-b border-brand-border pb-6">
                     <h1 className="text-lg font-bold tracking-tight text-white font-mono uppercase">
                         Create Workspace
                     </h1>
@@ -109,7 +109,7 @@ export default function SetupView() {
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-12">
                     {error && (
                         <div className="bg-red-950/20 border border-red-900/40 text-red-400 px-4 py-2.5 rounded text-xs relative flex items-center justify-between font-mono">
                             <span>{error}</span>
@@ -124,16 +124,16 @@ export default function SetupView() {
                         </div>
                     )}
 
-                    {/* Room Specification Panel */}
-                    <div className="bg-brand-panel border border-brand-border rounded-xl p-6 space-y-5">
-                        <div className="flex items-center space-x-2 border-b border-brand-border pb-3">
+                    {/* Room Specification Section - Continuous flow, no outer box wrapper */}
+                    <div className="space-y-6">
+                        <div className="flex items-center space-x-2 border-b border-brand-border pb-3 mb-4">
                             <span className="text-xs text-brand-accent font-mono">01 //</span>
                             <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">
                                 ROOM PARAMETERS
                             </h2>
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                             <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted">
                                 WORKSPACE TITLE
                             </label>
@@ -148,7 +148,7 @@ export default function SetupView() {
                             />
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                             <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted">
                                 PROJECT OBJECTIVE
                             </label>
@@ -164,9 +164,9 @@ export default function SetupView() {
                         </div>
                     </div>
 
-                    {/* Role Assignments Panel */}
-                    <div className="bg-brand-panel border border-brand-border rounded-xl p-6 space-y-5">
-                        <div className="flex items-center justify-between border-b border-brand-border pb-3">
+                    {/* Role Assignments Section - Clean lists/rows, no outer boxes */}
+                    <div className="space-y-6 border-t border-brand-border pt-12">
+                        <div className="flex items-center justify-between border-b border-brand-border pb-3 mb-4">
                             <div className="flex items-center space-x-2">
                                 <span className="text-xs text-brand-accent font-mono">02 //</span>
                                 <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">
@@ -177,18 +177,18 @@ export default function SetupView() {
                                 type="button"
                                 onClick={handleAddRole}
                                 disabled={loading}
-                                className="text-[9px] font-mono font-bold uppercase tracking-wider bg-brand-surface border border-brand-border text-zinc-350 py-1 px-2.5 rounded hover:bg-zinc-800 transition-colors focus:outline-none"
+                                className="text-[9px] font-mono font-bold uppercase tracking-wider bg-transparent border border-brand-border text-brand-textSecondary py-1.5 px-3 rounded hover:bg-brand-surface hover:text-white transition-colors focus:outline-none"
                             >
                                 + Add Agent Role
                             </button>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="divide-y divide-brand-border/60">
                             {roles.map((role, index) => (
-                                <div key={index} className="flex flex-col md:flex-row items-stretch md:items-center gap-4 bg-brand-surface/40 border border-brand-border p-4 rounded-lg relative">
+                                <div key={index} className="flex flex-col md:flex-row items-start md:items-center gap-6 py-5 first:pt-0 last:pb-0 relative">
                                     {/* Role Name */}
-                                    <div className="flex-1">
-                                        <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted mb-1.5">
+                                    <div className="flex-1 w-full">
+                                        <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted mb-2">
                                             ROLE NAME
                                         </label>
                                         <input
@@ -203,8 +203,8 @@ export default function SetupView() {
                                     </div>
 
                                     {/* Model ID Dropdown */}
-                                    <div className="flex-1">
-                                        <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted mb-1.5">
+                                    <div className="flex-1 w-full">
+                                        <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted mb-2">
                                             MODEL ENGINE
                                         </label>
                                         <select
@@ -222,8 +222,8 @@ export default function SetupView() {
                                     </div>
 
                                     {/* Color Select */}
-                                    <div>
-                                        <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted mb-1.5">
+                                    <div className="w-full md:w-auto">
+                                        <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted mb-2">
                                             THEME COLOR
                                         </label>
                                         <div className="flex items-center space-x-1.5 py-1">
@@ -239,6 +239,7 @@ export default function SetupView() {
                                                             : 'border-transparent hover:scale-105'
                                                     }`}
                                                     style={{ backgroundColor: color }}
+                                                    aria-label={`Select color ${color}`}
                                                 />
                                             ))}
                                         </div>
@@ -246,7 +247,7 @@ export default function SetupView() {
 
                                     {/* Delete Button */}
                                     {roles.length > 1 && (
-                                        <div className="flex items-end justify-end md:justify-center md:pt-4">
+                                        <div className="flex items-center justify-end w-full md:w-auto md:self-end md:pb-1 pt-2 md:pt-0">
                                             <button
                                                 type="button"
                                                 onClick={() => handleRemoveRole(index)}
@@ -263,20 +264,22 @@ export default function SetupView() {
                     </div>
 
                     {/* Submit Button */}
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-2.5 rounded bg-brand-accent hover:bg-brand-accentHover font-mono font-bold uppercase tracking-wider text-xs text-white transition-colors flex items-center justify-center focus:outline-none"
-                    >
-                        {loading ? (
-                            <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                            </svg>
-                        ) : (
-                            'INITIALIZE CONSENSUS WORKSPACE'
-                        )}
-                    </button>
+                    <div className="border-t border-brand-border pt-8">
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-2.5 rounded bg-brand-accent hover:bg-brand-accentHover font-mono font-bold uppercase tracking-wider text-xs text-white transition-colors flex items-center justify-center focus:outline-none"
+                        >
+                            {loading ? (
+                                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                            ) : (
+                                'INITIALIZE CONSENSUS WORKSPACE'
+                            )}
+                        </button>
+                    </div>
                 </form>
             </main>
         </div>
