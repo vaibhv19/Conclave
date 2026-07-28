@@ -120,8 +120,7 @@ export default function RoomView() {
                 actionLoading={actionLoading} 
             />
 
-            {/* Header Console */}
-            <header className="border-b border-brand-border bg-brand-panel flex-none h-14">
+            <header className="border-b border-brand-border bg-[#121214] flex-none h-14">
                 <div className="h-full px-6 flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                         <button
@@ -133,9 +132,8 @@ export default function RoomView() {
                         <div className="flex items-center space-x-2.5">
                             {/* Consensus Star mini logo in header */}
                             <svg className="h-5 w-5 text-brand-accent" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="2" strokeDasharray="3 3" className="opacity-30" />
-                                <path d="M50 8 C58 35 75 42 92 50 C75 58 58 65 50 92 C42 65 25 58 8 50 C25 42 42 35 50 8 Z" fill="currentColor" />
-                                <circle cx="50" cy="50" r="6" fill="#121214" />
+                                <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" className="opacity-30" />
+                                <path d="M50 12 C57 37 73 43 88 50 C73 57 57 63 50 88 C43 57 27 50 12 50 C27 43 43 37 50 12 Z" fill="currentColor" />
                             </svg>
 
                             <h2 className="text-xs font-bold text-white font-mono flex items-center gap-2 select-none uppercase tracking-wide">
