@@ -65,14 +65,13 @@ export default function SetupView() {
     return (
         <div className="min-h-screen bg-brand-bg text-brand-textPrimary flex flex-col font-sans select-none pb-16">
             {/* Minimal Desktop-style Header */}
-            <header className="border-b border-brand-border bg-brand-panel sticky top-0 z-50">
+            <header className="border-b border-brand-border bg-[#121214] sticky top-0 z-50">
                 <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                         {/* Branded Logo representation */}
                         <svg className="h-6 w-6 text-brand-accent" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="2" strokeDasharray="3 3" className="opacity-30" />
-                            <path d="M50 8 C58 35 75 42 92 50 C75 58 58 65 50 92 C42 65 25 58 8 50 C25 42 42 35 50 8 Z" fill="currentColor" />
-                            <circle cx="50" cy="50" r="6" fill="#121214" />
+                            <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" className="opacity-30" />
+                            <path d="M50 12 C57 37 73 43 88 50 C73 57 57 63 50 88 C43 57 27 50 12 50 C27 43 43 37 50 12 Z" fill="currentColor" />
                         </svg>
 
                         <div className="flex items-baseline space-x-2">
@@ -100,7 +99,7 @@ export default function SetupView() {
             </header>
 
             {/* Content Container */}
-            <main className="flex-1 max-w-3xl mx-auto px-6 py-10 w-full">
+            <main className="flex-1 max-w-3xl mx-auto px-6 pt-16 pb-12 w-full">
                 <div className="mb-8 border-b border-brand-border pb-6">
                     <h1 className="text-lg font-bold tracking-tight text-white font-mono uppercase">
                         Create Workspace
