@@ -109,7 +109,7 @@ export default function RoomView() {
     const activePipelineRole = activeRoom?.roleAssignments?.[activeRoom?.currentPipelineIndex]?.roleName || '';
 
     return (
-        <div className={`min-h-screen bg-brand-bg text-zinc-100 flex flex-col font-sans selection:bg-brand-accent/20 relative overflow-hidden h-screen transition-all duration-300 ${
+        <div className={`min-h-screen bg-brand-bg text-brand-textPrimary flex flex-col font-sans selection:bg-brand-accent/20 relative overflow-hidden h-screen transition-all duration-300 ${
             isPaused ? 'ring-1 ring-amber-500/30' : ''
         }`}>
             {/* Alert Banner for PAUSED interventions */}
@@ -121,24 +121,31 @@ export default function RoomView() {
             />
 
             {/* Header Console */}
-            <header className="border-b border-brand-border bg-brand-card flex-none h-14">
+            <header className="border-b border-brand-border bg-brand-panel flex-none h-14">
                 <div className="h-full px-6 flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                         <button
                             onClick={clearActiveRoom}
-                            className="text-[10px] font-mono font-bold uppercase tracking-wider py-1.5 px-3 rounded bg-brand-surface border border-brand-border hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200 focus:outline-none"
+                            className="text-[9px] font-mono font-bold uppercase tracking-wider py-1.5 px-3 rounded bg-brand-surface border border-brand-border hover:bg-brand-active transition-colors text-brand-textSecondary hover:text-brand-textPrimary focus:outline-none"
                         >
                             &larr; Exit Console
                         </button>
                         <div className="flex items-center space-x-2.5">
-                            <h2 className="text-sm font-bold text-white font-mono flex items-center gap-2 select-none">
+                            {/* Consensus Star mini logo in header */}
+                            <svg className="h-5 w-5 text-brand-accent" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="2" strokeDasharray="3 3" className="opacity-30" />
+                                <path d="M50 8 C58 35 75 42 92 50 C75 58 58 65 50 92 C42 65 25 58 8 50 C25 42 42 35 50 8 Z" fill="currentColor" />
+                                <circle cx="50" cy="50" r="6" fill="#121214" />
+                            </svg>
+
+                            <h2 className="text-xs font-bold text-white font-mono flex items-center gap-2 select-none uppercase tracking-wide">
                                 {activeRoom?.name}
                                 <span 
                                     className={`h-1.5 w-1.5 rounded-full ${wsConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} 
                                     title={wsConnected ? 'WebSocket Connected' : 'WebSocket Standby'} 
                                 />
                             </h2>
-                            <span className="text-[10px] text-zinc-600 font-mono select-all hidden sm:inline">
+                            <span className="text-[9px] text-brand-textMuted font-mono select-all hidden sm:inline">
                                 [PID: {roomId?.substring(0, 8)}]
                             </span>
                         </div>
@@ -146,12 +153,12 @@ export default function RoomView() {
 
                     {/* Pipeline Controls */}
                     <div className="flex items-center space-x-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors select-none ${
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold border transition-colors select-none ${
                             activeRoom?.status === 'ACTIVE'
                                 ? 'bg-emerald-950/20 text-emerald-400 border-emerald-900/30'
                                 : activeRoom?.status === 'PAUSED'
                                 ? 'bg-amber-950/20 text-amber-400 border-amber-900/30'
-                                : 'bg-zinc-900 text-zinc-500 border-brand-border'
+                                : 'bg-zinc-900 text-brand-textMuted border-brand-border'
                         }`}>
                             STATUS::{activeRoom?.status}
                         </span>
@@ -160,14 +167,14 @@ export default function RoomView() {
                             <button
                                 onClick={handlePause}
                                 disabled={actionLoading || activeRoom?.status !== 'ACTIVE'}
-                                className="px-2 py-1 rounded text-[10px] font-mono font-bold uppercase text-zinc-400 hover:text-red-400 disabled:opacity-20 disabled:pointer-events-none transition-colors focus:outline-none"
+                                className="px-2 py-1 rounded text-[9px] font-mono font-bold uppercase text-brand-textSecondary hover:text-red-400 disabled:opacity-20 disabled:pointer-events-none transition-colors focus:outline-none"
                             >
                                 Pause
                             </button>
                             <button
                                 onClick={handleResume}
                                 disabled={actionLoading || (activeRoom?.status !== 'PAUSED' && activeRoom?.status !== 'INITIALIZED')}
-                                className="px-2 py-1 rounded text-[10px] font-mono font-bold uppercase bg-brand-accent hover:bg-brand-accentHover text-white disabled:opacity-20 disabled:pointer-events-none transition-colors focus:outline-none"
+                                className="px-2 py-1 rounded text-[9px] font-mono font-bold uppercase bg-brand-accent hover:bg-brand-accentHover text-white disabled:opacity-20 disabled:pointer-events-none transition-colors focus:outline-none"
                             >
                                 Resume
                             </button>
@@ -191,13 +198,13 @@ export default function RoomView() {
                     {/* Message stream */}
                     <div className="flex-1 overflow-y-auto p-6 space-y-6">
                         {messages.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-center text-zinc-500 px-4 select-none">
-                                <svg className="h-8 w-8 text-zinc-700 mb-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="h-full flex flex-col items-center justify-center text-center text-brand-textMuted px-4 select-none">
+                                <svg className="h-8 w-8 text-zinc-800 mb-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                 </svg>
-                                <h4 className="text-xs font-mono font-bold text-zinc-400">STRATEGY STREAM READY</h4>
-                                <p className="text-[10px] text-brand-textMuted max-w-sm mt-1">
-                                    Initiate command sequences by mentioning target roles (e.g. <span className="font-mono text-zinc-300">@Lead-Writer</span>).
+                                <h4 className="text-[10px] font-mono font-bold text-brand-textSecondary uppercase tracking-wider">STRATEGY STREAM READY</h4>
+                                <p className="text-[9px] text-brand-textMuted max-w-sm mt-1 font-mono uppercase tracking-wide">
+                                    Initiate command sequences by mentioning target roles (e.g. <span className="text-zinc-400">@Lead-Writer</span>).
                                 </p>
                             </div>
                         ) : (

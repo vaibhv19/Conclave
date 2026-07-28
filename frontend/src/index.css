@@ -4,8 +4,8 @@
 
 @layer base {
   body {
-    background-color: #080809;
-    color: #edeef0;
+    background-color: #08080A;
+    color: #F4F4F6;
     margin: 0;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -13,35 +13,47 @@
     overflow-x: hidden;
   }
 
-  /* Custom thin scrollbar */
+  /* Browser Autofill Color Overrides (Prevents ugly white/yellow backgrounds in Chrome/Edge) */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus {
+    -webkit-text-fill-color: #F4F4F6;
+    -webkit-box-shadow: 0 0 0px 1000px #18181C inset !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* Clean Scrollbars (VSCode/Linear style) */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #080809;
+    background: #08080A;
   }
   ::-webkit-scrollbar-thumb {
-    background: #1f1f23;
+    background: #1F1F24;
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #2c2c35;
+    background: #2E2E36;
   }
 
-  /* Text selection */
+  /* Custom Selection styling */
   ::selection {
-    background-color: rgba(139, 92, 246, 0.25);
-    color: #edeef0;
+    background-color: rgba(139, 92, 246, 0.2);
+    color: #F4F4F6;
   }
 }
 
-/* Custom linear border transition */
+/* Custom border transition classes */
 .transition-border {
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Diagonal warning stripe animation for paused banner */
+/* High-contrast stripe pattern for halted pipeline warnings */
 @keyframes warning-stripes {
   from { background-position: 0 0; }
   to { background-position: 40px 0; }
@@ -49,5 +61,5 @@
 
 .animate-stripes {
   background-size: 40px 40px;
-  animation: warning-stripes 1s linear infinite;
+  animation: warning-stripes 1.2s linear infinite;
 }
