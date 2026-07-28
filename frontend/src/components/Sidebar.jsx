@@ -29,7 +29,7 @@ export default function Sidebar({
     }, [workflowState.reviewComments]);
 
     return (
-        <aside className={`relative flex flex-col h-full bg-brand-card border-r border-brand-border transition-all duration-300 select-none ${
+        <aside className={`relative flex flex-col h-full bg-[#121214] border-r border-brand-border transition-all duration-300 select-none ${
             collapsed ? 'w-10' : 'w-full md:w-72'
         }`}>
             {/* Collapse toggle button on top right of panel */}
@@ -54,31 +54,29 @@ export default function Sidebar({
 
             {/* Expanded Sidebar Panel */}
             {!collapsed && (
-                <div className="flex-1 flex flex-col min-h-0 p-5 overflow-hidden">
-                    {/* Header info */}
-                    <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-500 mb-6">
+                <div className="flex-1 flex flex-col min-h-0 p-5 overflow-hidden divide-y divide-brand-border">
+                    {/* Environment Metrics Label */}
+                    <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-500 pb-4 flex-none">
                         ENVIRONMENT METRICS
                     </div>
 
-                    {/* Objectives Section */}
-                    <div className="mb-5 flex-none">
+                    {/* Objectives Section - Text only, no border cards */}
+                    <div className="py-5 flex-none">
                         <h3 className="text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted mb-2">
                             🎯 OBJECTIVE
                         </h3>
-                        <p className="text-xs text-zinc-300 leading-relaxed bg-brand-bg border border-brand-border p-3 rounded-lg">
+                        <p className="text-xs text-zinc-455 leading-relaxed font-sans max-h-24 overflow-y-auto">
                             {objective || 'No objective specified.'}
                         </p>
                     </div>
 
-                    {/* Consensus Draft Section */}
-                    <div className="flex-1 flex flex-col min-h-0 mb-5">
+                    {/* Consensus Draft Section - Borderless editor-like view */}
+                    <div className="flex-1 flex flex-col min-h-0 py-5">
                         <h3 className="text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted mb-2">
                             📝 CONSENSUS DRAFT
                         </h3>
-                        <div className={`flex-1 overflow-y-auto font-mono text-xs text-zinc-200 leading-relaxed bg-brand-bg border p-3 rounded-lg transition-colors duration-300 ${
-                            draftUpdated 
-                                ? 'border-brand-accent/40 bg-brand-accent/5' 
-                                : 'border-brand-border'
+                        <div className={`flex-1 overflow-y-auto font-mono text-xs text-zinc-300 leading-relaxed transition-colors duration-300 ${
+                            draftUpdated ? 'text-brand-accent' : ''
                         }`}>
                             {workflowState.currentDraft ? (
                                 workflowState.currentDraft
@@ -88,15 +86,13 @@ export default function Sidebar({
                         </div>
                     </div>
 
-                    {/* Critic Review Section */}
-                    <div className="h-32 flex flex-col min-h-0 mb-5 flex-none">
+                    {/* Critic Review Section - Borderless review text */}
+                    <div className="h-32 flex flex-col min-h-0 py-5 flex-none">
                         <h3 className="text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted mb-2">
                             💬 AUDIT REVIEWS
                         </h3>
-                        <div className={`flex-1 overflow-y-auto font-sans text-xs text-zinc-350 leading-relaxed bg-brand-bg border p-3 rounded-lg transition-colors duration-300 ${
-                            commentsUpdated 
-                                ? 'border-brand-accent/40 bg-brand-accent/5' 
-                                : 'border-brand-border'
+                        <div className={`flex-1 overflow-y-auto font-sans text-xs text-zinc-400 leading-relaxed transition-colors duration-300 ${
+                            commentsUpdated ? 'text-brand-accent' : ''
                         }`}>
                             {workflowState.reviewComments ? (
                                 workflowState.reviewComments
@@ -106,19 +102,23 @@ export default function Sidebar({
                         </div>
                     </div>
 
-                    {/* Token usage summary */}
-                    <div className="mt-auto pt-4 border-t border-brand-border flex-none">
-                        <h3 className="text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted mb-2.5">
-                            📊 AUDITED TOKENS
+                    {/* Token usage summary - Monospace layout block, no card grids */}
+                    <div className="pt-4 mt-auto flex-none">
+                        <h3 className="text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted mb-3">
+                            📊 AUDITED TELEMETRY
                         </h3>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-brand-bg p-2 rounded-lg border border-brand-border text-center">
-                                <span className="text-[8px] text-brand-textMuted uppercase font-mono tracking-widest block">Prompt</span>
-                                <strong className="text-xs font-mono text-zinc-200 mt-0.5 block">{tokenUsage.promptTokens}</strong>
+                        <div className="space-y-1.5 font-mono text-[9px]">
+                            <div className="flex items-center justify-between py-1 border-b border-brand-border/40">
+                                <span className="text-brand-textMuted uppercase tracking-wider">PROMPT_TOKENS</span>
+                                <span className="text-zinc-300 font-bold">{tokenUsage.promptTokens}</span>
                             </div>
-                            <div className="bg-brand-bg p-2 rounded-lg border border-brand-border text-center">
-                                <span className="text-[8px] text-brand-textMuted uppercase font-mono tracking-widest block">Completion</span>
-                                <strong className="text-xs font-mono text-zinc-200 mt-0.5 block">{tokenUsage.completionTokens}</strong>
+                            <div className="flex items-center justify-between py-1 border-b border-brand-border/40">
+                                <span className="text-brand-textMuted uppercase tracking-wider">COMPL_TOKENS</span>
+                                <span className="text-zinc-300 font-bold">{tokenUsage.completionTokens}</span>
+                            </div>
+                            <div className="flex items-center justify-between py-1">
+                                <span className="text-brand-textMuted uppercase tracking-wider">TOTAL_TOKENS</span>
+                                <span className="text-zinc-350 font-bold">{tokenUsage.promptTokens + tokenUsage.completionTokens}</span>
                             </div>
                         </div>
                     </div>
