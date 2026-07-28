@@ -66,16 +66,27 @@ To match premium layout tools like Trajectory, Linear, and Cursor Settings, Conc
 
 ---
 
-## 5. Form UX & Chrome Autofill Protection
+## 5. Form UX, Input States & Chrome Autofill Protection
 
-To prevent browsers from injecting default white or yellow backgrounds on input elements when credentials autofill is active, Conclave forces background inset shadows:
+To ensure forms feel handcrafted, Conclave defines clean, stateful interactive input rules:
+- **Split Page Composition Layout**: Authentication views (`LoginView`, `RegisterView`) utilize a premium side-by-side composition. The left column presents mono-styled value propositions, feature grids, and system status indicators. The right column renders the active authentication form (using a clean `#121214` surface instead of a thick outlined floating box). On mobile, this reflows naturally to hide the illustration deck and focus solely on inputs.
+- **Input States**:
+  - *Idle*: `#18181C` background, `#1F1F24` borders, muted zinc-700 placeholders.
+  - *Hover*: Border transition to `#2E2E36` (Raised Slate).
+  - *Focus*: Focus rings applied via `focus:ring-1 focus:ring-brand-borderLight` to maintain dark backgrounds without browser default offsets.
+  - *Disabled*: Opacity set to `opacity-40` with `cursor-not-allowed` attributes.
+  - *Autofill Protection*: Overridden using vendor pseudo-classes and caret-color controls:
 ```css
-input:-webkit-autofill {
-  -webkit-text-fill-color: #F4F4F6;
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #F4F4F6 !important;
   -webkit-box-shadow: 0 0 0px 1000px #18181C inset !important;
+  caret-color: #F4F4F6 !important;
 }
 ```
-Focus rings are managed via transition borders (`transition-border duration-150`) changing from `#1F1F24` to `#2E2E36` dynamically.
+- **Accessibly Tagged**: Inputs include explicit `id`, `name`, and standard semantic `autoComplete` attributes (`email`, `current-password`, `new-password`) to prevent credential managers from failing or introducing white flashes.
 
 ---
 
