@@ -1,109 +1,126 @@
 # Provider Adapter Strategy: Multi-Model Context Unification
 
-This document defines the core engineering differentiator of **Conclave**: the abstraction layer that enables a single, unified conversation to be understood by three distinct LLM providers (Google Gemini, OpenAI, and Anthropic Claude), each of which requires a unique API message structure.
+This document details the design rationales, vendor constraints, implementation structures, and extension guidelines for Conclave's **Provider Adapter Layer**. 
 
 ---
 
-## 1. The Canonical Conversation Schema
-To prevent vendor lock-in and enable cross-model history, Conclave stores all interactions in a **Canonical Schema**. This format is independent of any provider’s specific requirements.
+## 1. Architectural Context & Design Decision
 
-**`CanonicalMessage` Structure:**
-```json
-{
-  "messageId": "UUID",
-  "senderType": "USER | AI | SYSTEM",
-  "roleName": "String (e.g., 'Lead-Writer')",
-  "modelId": "String (e.g., 'GEMINI_PRO')",
-  "content": "String (Markdown)",
-  "timestamp": "ISO-8601",
-  "isMocked": "Boolean"
-}
+### 1.1 The Problem
+No two Large Language Model (LLM) providers accept conversation history in the same format. For example:
+*   **Google Gemini** expects a strict alternating list of `user`/`model` roles and does not support native `system` role objects in its standard content array.
+*   **Anthropic Claude** requires the system instruction to be passed as a root-level property (`system`), with a separate alternating list of `user`/`assistant` messages.
+*   **OpenAI GPT** expects a flat list of `system`/`user`/`assistant` messages.
+
+If the application sends a raw conversation transcript to these endpoints, the APIs will fail validation, block requests, or lose context.
+
+### 1.2 The Decision
+Conclave implements a custom **Adapter Pattern** at the Java level. Rather than directly binding the database representation to any single provider, all messages are persisted in a single, provider-agnostic **Canonical Schema** (`CanonicalMessage`). Outgoing history is dynamically mapped to the target vendor's format at runtime, and incoming responses are normalized back.
+
+```
+                  ┌───────────────────────────────┐
+                  │   PostgreSQL DB Store         │
+                  │   (CanonicalMessage Schema)   │
+                  └───────────────┬───────────────┘
+                                  │
+                  ┌───────────────▼───────────────┐
+                  │     ProviderAdapter           │
+                  │     (Core Interface)          │
+                  └─┬─────────────┼─────────────┬─┘
+                    │             │             │
+        ┌───────────▼───┐ ┌───────▼───────┐ ┌───▼───────────┐
+        │ GeminiAdapter │ │ OpenAiAdapter │ │ ClaudeAdapter │
+        └───────────────┘ └───────────────┘ └───────────────┘
 ```
 
+### 1.3 Alternatives Considered & Trade-offs
+*   **Alternative 1: Direct Spring AI Client Abstractions:** Spring AI provides common wrappers. However, Spring AI's baseline `ChatClient` does not enforce provider-specific history rules (like Gemini's alternating check) at compile-time. Relying solely on Spring AI leads to runtime HTTP failures when history sequences drift.
+*   **Alternative 2: Client-side UI Payload Formatting:** Letting the React client format history. This was rejected because it leaks API structures to the client, increases payload sizes, and prevents backend orchestration and auditing.
+*   **The Verdict:** Custom `ProviderAdapter` implementations in Java isolate mapping logic. The business orchestrator only depends on the adapter interface, separating domain logic from vendor API changes.
+
 ---
 
-## 2. The Adapter Interface (`ProviderAdapter`)
-Every provider implementation must satisfy the `ProviderAdapter` contract. This ensures the orchestrator can interact with any model without knowing its underlying API shape.
+## 2. Adapter Specification & Vendor Constraints
 
+### 2.1 Gemini Adapter (Live Integration)
+*   **API Schema Requirement:** Strictly alternating array of `user` and `model` messages.
+*   **System Prompt Constraint:** Gemini does not accept a `system` role within its standard chat `contents` array.
+*   **Mapping Rules:**
+    *   `CanonicalMessage(USER)` &rarr; `user`
+    *   `CanonicalMessage(AI)` &rarr; `model`
+    *   `CanonicalMessage(SYSTEM)` &rarr; Concatenated and prefixed to the first `user` turn content (e.g. `[System Objective]\n\n[User message]`).
+*   **Validation Check:** Enforces that the mapped list alternate roles, starting with `user`. Throws `TranslationException` if two consecutive user or model messages are detected.
+
+### 2.2 OpenAI Adapter (Fake Integration)
+*   **API Schema Requirement:** Flat list of message objects containing `role` and `content`.
+*   **System Prompt Mapping:** Supported natively as a message with `role = "system"`.
+*   **Mapping Rules:**
+    *   `CanonicalMessage(USER)` &rarr; `user`
+    *   `CanonicalMessage(AI)` &rarr; `assistant`
+    *   `CanonicalMessage(SYSTEM)` &rarr; `system`
+*   **State Inclusion:** Renders the `WorkflowState` (objective, draft, comments) as the very first `system` instruction, ensuring the model is aligned before processing the history.
+
+### 2.3 Claude Adapter (Fake Integration)
+*   **API Schema Requirement:** Root-level parameters for model configuration, with a clean alternating list of `user`/`assistant` messages.
+*   **System Prompt Constraint:** System instructions must be passed as a top-level property (`system`), not inside the message array.
+*   **Mapping Rules:**
+    *   Extracts all `SYSTEM` messages and `WorkflowState` details.
+    *   Concatenates them into a single string passed in the root `system` field of the request.
+    *   Filters the `messages` list to contain only `user` and `assistant` messages, validating that they alternate.
+
+---
+
+## 3. Failure Modes & Recovery Strategies
+
+| Failure Mode | Trigger / Cause | System Impact | Recovery Strategy |
+| :--- | :--- | :--- | :--- |
+| **Alternating Role Violation** (`GeminiAdapter`) | User sends two consecutive messages without an intervening model response, or a model fails to reply. | Throws a validation `TranslationException`. | The orchestrator catches the exception, halts the turn, rolls back the transaction, and broadcasts a `SYSTEM_INTERVENTION` error event via WebSocket. |
+| **Janitor JSON Parsing Error** (`WorkflowStateServiceImpl`) | Gemini summarization outputs invalid JSON or includes markdown markdown indicators. | Fails to parse the updated draft/comments. | **Fallback:** Extracts raw text output, assigns it to `currentDraft`, logs the parsing exception to `reviewComments` for manual user resolution, and continues. |
+| **Missing Model Mapping** (`ModelRegistry`) | Mapped role requests an unregistered Model ID. | Throws `OrchestrationException` and halts turn. | UI alerts the user, blocks execution, and returns `400 Bad Request`. |
+
+---
+
+## 4. Developer's Extension Guide: Adding a Live Adapter
+
+To add a new provider (e.g., a live integration for **Cohere** or **Mistral**) in a future release, follow these steps:
+
+### Step 1: Create the Adapter Class
+Create a new class implementing `ProviderAdapter` in `com.conclave.integration.adapter`:
 ```java
-public interface ProviderAdapter {
-    /** Translates canonical history + WorkflowState into Provider-specific Request */
-    ProviderRequest toProviderFormat(List<CanonicalMessage> history, WorkflowState state);
+public class CohereAdapter implements ProviderAdapter {
+    @Override
+    public Object toProviderFormat(List<CanonicalMessage> history, WorkflowState state) {
+        // Translate canonical history and workflow state to Cohere API structure
+        return new CohereRequest(...);
+    }
 
-    /** Translates Provider-specific Response back into a CanonicalMessage */
-    CanonicalMessage fromProviderFormat(ProviderResponse response);
+    @Override
+    public CanonicalMessage fromProviderFormat(Object response) {
+        // Translate Cohere response payload back to CanonicalMessage
+        return CanonicalMessage.builder()...build();
+    }
 }
 ```
 
----
+### Step 2: Register the Bean
+Add the new adapter configuration in `SpringAiConfig` or register it conditionally in `MessageOrchestratorImpl`:
+```java
+if (ModelId.COHERE.name().equals(modelId)) {
+    adapter = new CohereAdapter();
+}
+```
 
-## 3. Gemini Adapter (Live Implementation)
-**Constraint:** Gemini (Vertex AI) uses a "Turn-based" array where roles are strictly toggled.
-
-*   **Role Mapping:** 
-    *   `USER` → `user`
-    *   `AI` → `model`
-    *   `SYSTEM` → Prefixed to the first `user` message (Gemini does not have a native `system` role in the standard `contents` array).
-*   **Structure:** Content is wrapped in a `parts` array.
-*   **Mapping Detail:**
-    ```json
-    { "role": "user", "parts": [{ "text": "..." }] }
-    ```
-
----
-
-## 4. OpenAI Adapter (Fake implementation)
-**Constraint:** OpenAI uses a "Flat-array" structure with a dedicated system role.
-
-*   **Role Mapping:** 
-    *   `USER` → `user`
-    *   `AI` → `assistant`
-    *   `SYSTEM` → `system`
-*   **Structure:** Direct object-level content.
-*   **Fake Verification:** Even though the API call is stubbed, the `toProviderFormat` logic is unit-tested to ensure it generates a valid OpenAI JSON payload. The fake response returns a serialized OpenAI `ChatCompletion` object, which is then passed through `fromProviderFormat` to test the full normalization round-trip.
+### Step 3: Implement Unit Tests
+Create unit tests in `src/test/java/com/conclave/integration/adapter/CohereAdapterTest.java` verifying that:
+1.  Canonical messages are correctly mapped.
+2.  System context is injected into the provider request.
+3.  Alternating roles are enforced.
 
 ---
 
-## 5. Claude Adapter (Fake implementation)
-**Constraint:** Anthropic Claude requires the System prompt to be a **top-level parameter**, not a message within the array.
+## 5. Interview Talking Points (Architectural Defense)
 
-*   **Role Mapping:** 
-    *   `USER` → `user`
-    *   `AI` → `assistant`
-*   **Structure:** 
-    *   `messages`: Array of user/assistant turns.
-    *   `system`: A separate string field at the root of the JSON (Crucial differentiator).
-*   **Mapping Detail:** The adapter extracts all `SYSTEM` messages from history and concatenates them into the root `system` parameter, effectively "cleaning" the message array for Claude's strict validation.
-
----
-
-## 6. WorkflowState: Context Compression
-To minimize costs and avoid context-window saturation, Conclave does not pass the full conversation history to every model. Instead, it passes a summarized `WorkflowState`.
-
-**The `WorkflowState` Object:**
-1.  **Project Objective:** The static high-level goal (resolved from `rooms.objective` in the database).
-2.  **Current Draft:** The latest version of the primary output (stored in `workflow_state.current_draft`).
-3.  **Review Comments:** A cumulative list of "pending fixes" identified by previous models (stored in `workflow_state.review_comments`).
-4.  **Short-Term Memory:** Only the last **2 messages** for immediate conversational flow (loaded dynamically from `conversation_history`).
-
-**Summarization Trigger:**
-When the `conversation_history` exceeds 10 messages, the backend triggers an internal "Janitor" turn (using Gemini) to update the **Current Draft** and **Review Comments** fields, then purges the middle of the history. The adapters then only package the `WorkflowState` + 2 recent messages for the next model.
-
----
-
-## 7. Extension Path: Fake-to-Live Swap
-The architecture is designed so that moving OpenAI or Claude from "Fake" to "Live" is a zero-code change for the business logic.
-
-*   **The Switch:** Using Spring `@Profiles` or `@ConditionalOnProperty`, the application swaps the `FakeChatClient` bean (e.g. `FakeOpenAiChatClient`) for the real provider bean provided by Spring AI.
-*   **The Contract:** Because the `OpenAiAdapter` already produces and consumes the correct OpenAI-shaped JSON, the logic remains identical.
-*   **Interview Proof:** This demonstrates **Dependency Inversion**. The Orchestrator depends on the `ProviderAdapter` interface, not the implementation. Adding a real API key simply activates the network transport layer; the data translation logic is already verified in v1.
-
----
-
-### Attachment: Conclave Feature List
-*   **Unified message schema** (Normalized format).
-*   **Per-provider adapter layer** (Translation logic).
-*   **Conversation persistence** (Shared history).
-*   **@-mention turn-taking** (Moderated flow).
-*   **WorkflowState** (Summarized context passing).
-*   **Multi-Provider Context Unification** (Core differentiator).
+When defending the Provider Adapter Strategy in technical reviews:
+*   **Dependency Inversion Principle (DIP):** "The core orchestrator is completely decoupled from provider APIs. It depends on the `ProviderAdapter` interface, not the concrete implementations, allowing us to swap OpenAI from a simulated mock bean to a live endpoint via configuration profiles without changing a single line of business logic."
+*   **Single Responsibility Principle (SRP):** "Each adapter class has one job: translation. It contains no state and no network configuration. If Anthropic modifies its API structure, we only need to update the `ClaudeAdapter` class."
+*   **Robust Boundary Validation:** "We perform validation *before* making network calls. For example, `GeminiAdapter` checks for alternating roles in Java code rather than sending a malformed request over the network. This saves API costs and provides instant feedback to the user."

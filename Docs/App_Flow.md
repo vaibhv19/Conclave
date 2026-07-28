@@ -1,76 +1,150 @@
 # App Flow & Execution Lifecycles: Conclave
 
-This document outlines the user journeys, data state transitions, and cross-service execution lifecycles for **Conclave**. It details the orchestration of multi-provider AI turns and the management of the "Pause & Intervene" mechanism.
+This document defines the core user journeys, data state transitions, and backend service lifecycles of the Conclave platform. It details the execution flow for room initialization, @-mention turn orchestration, real-time sync, context compaction (Context Janitor), and manual pause/resume interventions.
 
 ---
 
 ## 1. Meeting Room Setup Lifecycle
 
-This flow handles the transition from an empty state to an orchestrated multi-model environment.
+Handles the transition from an empty dashboard to an orchestrated, multi-agent workspace.
 
-1.  **Room Initialization:** User enters a room name and task objective in the UI (React).
-2.  **Role Assignment:** User maps specific roles (e.g., "Lead Writer", "Code Critic") to available models (React).
-3.  **Config Persistence:** Frontend sends room config and model mapping to `POST /api/rooms` (React → Spring Boot).
-4.  **Registry Binding:** Backend validates the mapping against the Model Registry (Spring Boot).
-5.  **State Initialization:** A new `WorkflowState` is created, and the room status is set to `INITIALIZED` in PostgreSQL (Spring Boot).
-6.  **System Prompting:** Backend generates a hidden "Context Foundation" message based on roles and the task objective (Spring Boot).
-7.  **Client Sync:** Backend returns the `RoomResponse`; Frontend navigates to the chat view, mounts the Level 0 main background grid with the Level 1 Sidebar and Console containers, and opens a WebSocket connection to `/topic/room/{roomId}` (React).
+```mermaid
+graph TD
+    User([User]) -->|Inputs Name & Objective| UI[React UI]
+    UI -->|Assigns Roles to Models| UI
+    UI -->|POST /api/rooms| Controller[RoomController.createRoom]
+    Controller -->|Validates Config| Registry[ModelRegistry.getClient]
+    Controller -->|Saves Room Status: INITIALIZED| DB[(PostgreSQL)]
+    Controller -->|Creates initial WorkflowState| DB
+    Controller -->|Returns RoomResponse| UI
+    UI -->|Subscribes to STOMP Topic| WS[stompjs Client]
+```
+
+1.  **Room Setup Init:** The user enters a room name and a system objective (e.g., "Write and review security schemas") in the React interface.
+2.  **Role Assignment:** The user assigns specific roles (e.g., "Writer" to `GEMINI_PRO`, "Reviewer" to `FAKE_CLAUDE`) and sets the order of execution (Pipeline Sequence).
+3.  **Config Dispatch:** The React client fires a `POST /api/rooms` request containing the config mappings to `RoomController`.
+4.  **Registry Validation:** The backend validates that all assigned model IDs exist within the `ModelRegistry` bean map.
+5.  **State Initialization:**
+    *   A database transaction writes rows to the `rooms` and `role_assignments` tables.
+    *   The room status is set to `INITIALIZED`.
+    *   A default `WorkflowState` record is generated with empty fields for `current_draft` and `review_comments`.
+6.  **Client Sync:** The controller returns `RoomResponse`. React navigates to the workspace view, establishes a WebSocket connection to the server, and subscribes to the STOMP channel `/topic/room/{roomId}`.
 
 ---
 
 ## 2. The @-Mention Turn Flow (Moderated Execution)
 
-This flow occurs when a user explicitly directs the conversation to a specific model.
+This lifecycle runs when a user explicitly routes a message to a specific role using the `@RoleName` trigger.
 
-1.  **Command Input:** User types a message containing an @-mention (e.g., "@Gemini, draft the intro") (React).
-2.  **Message Dispatch:** Frontend sends the command to the backend via `POST /api/chat/message` (React → Spring Boot).
-3.  **Role Resolution:** Backend parses the message to identify the target model from the room's Role Mapping and resolves the corresponding `ChatClient` bean from the Model Registry (Spring Boot).
-4.  **Context Preparation:** Backend retrieves the current `WorkflowState` and canonical history (Spring Boot).
-5.  **Adapter Translation:** The canonical history is passed through the provider-specific Adapter:
-    *   **Gemini Adapter:** Maps to `user/model` schema (Spring Boot).
-    *   **Fake OpenAI/Claude Adapters:** Maps to `user/assistant` schema (Spring Boot).
-6.  **Inference Execution:**
-    *   **Real Call (Gemini):** Dispatched via `VertexAiChatClient` (Spring Boot → Google API).
-    *   **Fake Call (OpenAI/Claude):** Dispatched to `FakeChatClient` for stubbed response simulation (Spring Boot).
-7.  **Canonical Normalization:** The raw response is translated back into the `CanonicalMessage` format (Spring Boot).
-8.  **Workflow Update:** The `WorkflowState` is updated with a new summary of the turn (Spring Boot).
-9.  **Real-time Broadcast:** The new message and updated state summary are pushed to the room's WebSocket topic via the `TURN_COMPLETED` event (Spring Boot → WebSocket).
-10. **UI Update:** All connected clients receive the payload and append the color-coded message bubble to the thread (React).
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User (React Client)
+    participant ChatCtrl as ChatController
+    participant Orch as MessageOrchestratorImpl
+    participant Reg as ModelRegistryImpl
+    participant Adap as ProviderAdapter (e.g., GeminiAdapter)
+    participant ChatClt as ChatClient / ChatModel
+    participant WS as SimpMessagingTemplate
+    participant DB as PostgreSQL
+
+    User->>ChatCtrl: POST /api/chat/message (Body with @Role)
+    ChatCtrl->>Orch: processUserTurn(roomId, content)
+    
+    rect rgb(20, 20, 25)
+        Note over Orch, DB: Message Persistence
+        Orch->>DB: Save CanonicalMessage (USER)
+    end
+
+    Orch->>Orch: Parse Mention (e.g., "@Writer")
+    Orch->>Reg: getClient(modelId) / getChatModel(modelId)
+    Reg-->>Orch: Return ChatClient Bean
+    Orch->>Adap: toProviderFormat(history, state)
+    Adap-->>Orch: Return Vendor Request Payload
+    
+    Orch->>WS: Broadcast TURN_STARTED Event
+    
+    alt Streaming API Call (Gemini Pro)
+        Orch->>ChatClt: stream(Prompt)
+        ChatClt-->>Orch: Flux<ChatResponse> (Chunks)
+        loop Process Chunk Stream
+            Orch->>WS: Broadcast CONTENT_CHUNK Event
+        end
+    else Fake API Call (OpenAI/Claude)
+        Orch->>ChatClt: prompt().call() (Mocked Latency)
+        ChatClt-->>Orch: ChatResponse (Full Output)
+        Orch->>WS: Simulate Streaming Chunks
+    end
+
+    Orch->>Adap: fromProviderFormat(responsePayload)
+    Adap-->>Orch: Return CanonicalMessage (AI)
+    Orch->>DB: Save CanonicalMessage (AI) & TokenUsageLog
+    Orch->>WS: Broadcast TURN_COMPLETED Event
+```
+
+1.  **Command Dispatched:** The user types a message containing an @-mention (e.g., `"@LeadWriter draft the database schema"`).
+2.  **Controller Injection:** `ChatController` intercepts the payload and invokes `MessageOrchestrator.processUserTurn`.
+3.  **User Message Saved:** The raw user input is saved as a `CanonicalMessage` with `sender_type = USER`.
+4.  **Mention Extraction:** `MentionParser` extracts the role name, looks up the assigned Model ID via `RoleAssignmentRepository`, and resolves the corresponding Spring AI `ChatClient` from the `ModelRegistry`.
+5.  **Adapter Translation:** The `ProviderAdapter` implementation (e.g. `GeminiAdapter`) translates the canonical message history and the active `WorkflowState` into the exact JSON structure expected by the vendor.
+6.  **Real-Time Broadcasts:**
+    *   Backend broadcasts a `TURN_STARTED` event over the WebSocket topic.
+    *   For streaming (Gemini), `ChatModel.stream()` returns a reactive `Flux<ChatResponse>`. The server consumes this flux on a Virtual Thread, writing incoming fragments directly to the WebSocket via `CONTENT_CHUNK` events.
+    *   For fake clients, the bean generates a mock response, delays execution to simulate API latency, and streams it chunk-by-chunk over the socket.
+7.  **Response Synthesis:** Once the stream completes, the final response is normalized back into a `CanonicalMessage` with `sender_type = AI`. It is saved to PostgreSQL, along with a `TokenUsageLog` audit record, and a `TURN_COMPLETED` STOMP frame is broadcast.
 
 ---
 
-## 3. Shared Context & Sync Flow
+## 3. The Context Janitor Lifecycle (Context Compression)
 
-How Conclave ensures all participants (human and model) remain aligned.
+To prevent conversation history from bloating token usage, a cleanup loop runs at the end of each turn.
 
-1.  **Event Listeners:** All frontend clients maintain an active STOMP subscription to the room's topic (React).
-2.  **State Trigger:** Any backend change (New Message, Status Change, Workflow Update) triggers a WebSocket broadcast event (`TURN_STARTED`, `CONTENT_CHUNK`, `TURN_COMPLETED`, or `SYSTEM_INTERVENTION`) (Spring Boot).
-3.  **Zustand Sync:** Upon receiving a WebSocket event, the local Zustand store updates the `messages` array and `workflowState` object (React).
-4.  **Re-render:** React triggers a partial re-render of the "Message Matrix" and "Context Sidebar" to reflect the unified history (React).
-5.  **Consistency Check:** Periodically, the frontend polls the `GET /api/rooms/{id}` endpoint to resolve any dropped WebSocket frames and synchronize room and workflow state (React → Spring Boot).
+```mermaid
+flowchart TD
+    Start([End of Turn]) --> Check{History Size > 10?}
+    Check -- No --> End([End Journey])
+    Check -- Yes --> Load[Load history & WorkflowState]
+    Load --> Format[Format transcript into text block]
+    Format --> Prompt[Compile Janitor System Prompt]
+    Prompt --> API[Invoke Gemini Pro Summarizer]
+    API --> Parse{Parse JSON Response?}
+    Parse -- Success --> Update[Update WorkflowState draft & comments]
+    Parse -- JSON Failure --> Fallback[Set full output to draft & log error]
+    Update --> Purge[Purge middle messages: Keep index 0 & last 2]
+    Fallback --> Purge
+    Purge --> Save[Save database changes]
+    Save --> Broadcast[Broadcast updated state via STOMP]
+    Broadcast --> End
+```
+
+1.  **Trigger Check:** At the end of `MessageOrchestratorImpl.executeStreamingTurnAsync`, the orchestrator invokes `WorkflowStateService.evaluateAndCompressHistory`.
+2.  **Size Check:** If the current `conversation_history` count is less than or equal to 10 messages, the operation exits.
+3.  **Summarization Compilation:** If history is > 10, the service formats the entire transcript and builds a compression prompt for the `Conclave Janitor`.
+4.  **Consolidation Request:** The backend calls `Gemini Pro` to incorporate agreed changes into the draft and extract unresolved tasks as review comments, requesting a strict JSON response:
+    ```json
+    { "currentDraft": "...", "reviewComments": "..." }
+    ```
+5.  **History Purging:** After updating `WorkflowState`, the database deletes the middle history rows, retaining only:
+    *   **Index 0 (Context Foundation):** The system objective message.
+    *   **Last 2 Messages:** The immediate conversation turn context to preserve short-term memory.
+6.  **Client Sync:** The updated `WorkflowState` and purged message list are broadcast via WebSocket to sync the frontend UI panels.
 
 ---
 
 ## 4. Pause & Intervene Flow (Manual Override)
 
-This logic allows users to break a sequential model pipeline to prevent drift.
+This flow allows a user to pause an active sequential pipeline (e.g., Writer &rarr; Critic) to inject manual corrections.
 
-```mermaid
-graph TD
-    A[Pipeline Active: Model A -> Model B] --> B{User Clicks 'Pause'}
-    B -- Frontend Signal --> C[Backend Locks Turn Queue]
-    C --> D[Status: PAUSED]
-    D --> E[User Types Correction/Message]
-    E -- POST /api/chat/message (isIntervention: true) --> F[Merge Message into WorkflowState]
-    F --> G[Update Canonical History]
-    G --> H[User Clicks 'Resume']
-    H -- Frontend Signal --> I[Backend Resolves Next Model in Queue]
-    I --> J[Next Model receives Updated State + User Intervention]
-```
-
-1.  **Intervention Trigger:** During a multi-model sequence, the user clicks the "Pause" button in the UI (React).
-2.  **Locking:** Backend receives the interrupt and sets the room status to `PAUSED`, halting the next model's execution (Spring Boot).
-3.  **Manual Entry:** User submits a "Correction Message" (React).
-4.  **State Merging:** Backend treats the intervention as a high-priority "System/User" message, appending it to the history and re-summarizing the `WorkflowState` (Spring Boot).
-5.  **Resumption:** User clicks "Resume"; Backend unlocks the queue and triggers the next model using the newly corrected context (Spring Boot).
-6.  **Context Awareness:** The next model in the pipeline "sees" the user's intervention as the most recent context, allowing it to pivot based on the manual guidance (Live/Fake Provider).
+1.  **Pause Signal:** During a sequential multi-model loop, the user clicks the "Pause" button.
+2.  **Pessimistic Locking:** The React client hits `POST /api/rooms/{roomId}/pause`. The backend invokes `PipelineManager.pausePipeline`, acquiring a pessimistic write lock on the `Room` entity:
+    ```java
+    // PipelineManagerImpl.java
+    Room room = roomRepository.findWithLockById(roomId)
+            .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+    room.setStatus(RoomStatus.PAUSED);
+    roomRepository.save(room);
+    ```
+3.  **Queue Lock:** The database status change to `PAUSED` prevents any subsequent models in the pipeline queue from triggering.
+4.  **User Intervention:** The user types a correction (e.g., `"Focus more on the validation functions"`) and submits it.
+5.  **Context Injection:** The backend flags this message as `isIntervention = true`. The user's input is saved as a `CanonicalMessage` and immediately merged into the `WorkflowState` draft context.
+6.  **Pipeline Resume:** The user clicks the "Resume" button. The backend updates the room status back to `ACTIVE`, advances `currentPipelineIndex`, and triggers the next model turn. The target model receives the newly updated context containing the user's manual intervention.

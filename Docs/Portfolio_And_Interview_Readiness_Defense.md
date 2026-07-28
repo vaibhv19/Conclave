@@ -8,8 +8,8 @@ This document provides a strategic defense matrix detailing the rationale behind
 
 ### 1. Adapter Design Pattern
 *   **Core Question:** *Why not write standard if-else blocks inside the main Chat controller to route prompts to different models?*
-*   **Strategic Defense & Rationale:** Direct conditional checks inside controllers violate the Single Responsibility and Open-Closed principles. Every time a vendor (Google, OpenAI, Anthropic) updates their payload schema or a new provider is added, the chat controller would require modification and testing. The Adapter pattern establishes a strict interface boundary (`ChatAdapter`), decoupling core orchestration from third-party schema details.
-*   **Key Code Reference:** [ChatAdapter.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/adapter/ChatAdapter.java) | [GeminiAdapter.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/adapter/GeminiAdapter.java)
+*   **Strategic Defense & Rationale:** Direct conditional checks inside controllers violate the Single Responsibility and Open-Closed principles. Every time a vendor (Google, OpenAI, Anthropic) updates their payload schema or a new provider is added, the chat controller would require modification and testing. The Adapter pattern establishes a strict interface boundary (`ProviderAdapter`), decoupling core orchestration from third-party schema details.
+*   **Key Code Reference:** [ProviderAdapter.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/adapter/ProviderAdapter.java) | [GeminiAdapter.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/adapter/GeminiAdapter.java)
 *   **Learning Guide Reference:** [03_Provider_Adapter_Pattern.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Provider_Adapter_Pattern.md)
 
 ### 2. Canonical Message Model

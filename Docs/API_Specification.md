@@ -1,197 +1,340 @@
-# API Specification: Conclave
+# API Specification: Conclave REST & STOMP Interfaces
 
-This document defines the public REST API and WebSocket contract for the **Conclave** orchestration platform. It specifies how the React frontend interacts with the Spring Boot backend to manage rooms, trigger multi-provider turns, and handle real-time state synchronization.
+This document defines the complete REST API contract and WebSocket STOMP protocol specification for the **Conclave** platform. 
 
 ---
 
 ## 1. Global Conventions
-- **Base URL:** `http://localhost:8080/api`
-- **Auth Scheme:** HTTP Bearer Token (JWT)
-- **Content Type:** `application/json`
-- **Error Format:**
-  ```json
-  {
-    "status": 400,
-    "error": "Bad Request",
-    "message": "Model 'Claude' is currently in Mock mode.",
-    "timestamp": "2024-07-26T10:11:00Z"
-  }
-  ```
 
----
-
-## 2. Authentication (`/auth`)
-| Path | Method | Description | Request Body | Response Body |
-| :--- | :--- | :--- | :--- | :--- |
-| `/login` | `POST` | Authenticates user | `{ "email", "password" }` | `{ "token", "user" }` |
-| `/register` | `POST` | Creates new account | `{ "email", "password", "name" }` | `{ "token", "user" }` |
-
----
-
-## 3. Room Management (`/rooms`)
-| Path | Method | Description | Request | Response |
-| :--- | :--- | :--- | :--- | :--- |
-| `/` | `POST` | Creates a new meeting room | `RoomCreateRequest` | `RoomResponse` |
-| `/{id}` | `GET` | Fetches current room state | Path Variable `id` | `RoomResponse` |
-| `/{id}/role-assignments` | `PUT` | Updates role-to-model mapping | `List<RoleAssignmentDTO>` | `RoomResponse` |
-
-**`RoomCreateRequest`**:
-```json
-{
-  "name": "Project Apollo",
-  "objective": "Drafting technical architecture",
-  "roleAssignments": [
+*   **Base REST Path:** `http://localhost:8080/api`
+*   **WebSocket Upgrade Endpoint:** `ws://localhost:8080/ws-conclave`
+*   **Authentication:** HTTP Authorization header containing JWT Bearer Token:
+    ```http
+    Authorization: Bearer <JWT_TOKEN>
+    ```
+*   **Payload Format:** JSON (`application/json`)
+*   **Error Response Schema:** Exposes standard error responses captured by `GlobalExceptionHandler`:
+    ```json
     {
-      "roleName": "Lead-Writer",
-      "modelId": "GEMINI_PRO",
-      "uiColorHex": "#E11D48"
-    },
-    {
-      "roleName": "Code-Critic",
-      "modelId": "FAKE_CLAUDE",
-      "uiColorHex": "#10B981"
+      "status": 400,
+      "error": "Bad Request",
+      "message": "No role assignment found in room matching mention: @SecurityCritic",
+      "timestamp": "2026-07-28T10:11:00.123"
     }
-  ]
-}
+    ```
+
+---
+
+## 2. Request Lifecycle & Sequence Diagram
+
+This sequence illustrates the end-to-end processing of a user's chat message containing a role mention:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as React Client (stompjs)
+    participant Filter as JwtAuthenticationFilter
+    participant Ctrl as ChatController
+    participant Orch as MessageOrchestratorImpl
+    participant DB as PostgreSQL (JPA)
+    participant WS as SimpMessagingTemplate
+    participant LLM as External Gemini / Mock LLM
+
+    Client->>Filter: POST /api/chat/message (Headers: Authorization + Body: ChatMessageRequest)
+    Note over Filter: 1. Extract Bearer token<br/>2. Verify signature & expiration<br/>3. Inject UserPrincipal to SecurityContext
+    
+    alt Token Invalid
+        Filter-->>Client: 401 Unauthorized
+    end
+    
+    Filter->>Ctrl: Forward Request to ChatController
+    
+    Note over Ctrl: 4. Check @Valid annotations<br/>(e.g., Content not empty, Room UUID format)
+    alt Validation fails
+        Ctrl-->>Client: 400 Bad Request
+    end
+    
+    Ctrl->>Orch: processUserTurn(roomId, content)
+    
+    Orch->>DB: 5. SELECT room FOR UPDATE (Locking if Pipeline active)
+    Orch->>DB: 6. Save CanonicalMessage (USER)
+    
+    Orch->>Orch: 7. Extract role mention (e.g., "@LeadWriter")
+    alt Mention is invalid / Role not mapped
+        Orch-->>Client: 400 Bad Request (via Exception Handler)
+    end
+    
+    Orch->>WS: 8. Broadcast TURN_STARTED via STOMP
+    
+    Orch->>LLM: 9. Invoke Model (Gemini stream OR Fake Latency stream)
+    loop Stream Output
+        LLM-->>Orch: Text Fragment
+        Orch->>WS: 10. Broadcast CONTENT_CHUNK event
+    end
+    
+    Orch->>DB: 11. Save CanonicalMessage (AI) & TokenUsageLog
+    Orch->>WS: 12. Broadcast TURN_COMPLETED event
+    Orch-->>Ctrl: Return completed message status
+    Ctrl-->>Client: 200 OK (Empty response body, updates broadcast async)
 ```
 
-**`RoleAssignmentDTO`**:
-```json
-{
-  "roleName": "String",
-  "modelId": "String",
-  "uiColorHex": "String"
-}
-```
+---
 
-**`RoomResponse`**:
-```json
-{
-  "roomId": "UUID",
-  "name": "Project Apollo",
-  "objective": "Drafting technical architecture",
-  "status": "INITIALIZED | ACTIVE | PAUSED | ARCHIVED",
-  "roleAssignments": [
+## 3. REST Endpoint Registry
+
+### 3.1 Authentication Services (`/auth`)
+
+#### `POST /auth/register`
+Creates a new user profile.
+*   **Request Headers:** `Content-Type: application/json`
+*   **Request Body Example:**
+    ```json
     {
-      "roleName": "Lead-Writer",
-      "modelId": "GEMINI_PRO",
-      "uiColorHex": "#E11D48"
-    },
-    {
-      "roleName": "Code-Critic",
-      "modelId": "FAKE_CLAUDE",
-      "uiColorHex": "#10B981"
+      "email": "candidate@engineer.com",
+      "password": "SecurePassword123",
+      "name": "Alex Candidate"
     }
-  ],
-  "workflowState": {
-    "currentDraft": "String",
-    "reviewComments": "String",
-    "lastUpdatedAt": "ISO-8601"
-  }
-}
-```
+    ```
+*   **Response Body Example (200 OK):**
+    ```json
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "user": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "email": "candidate@engineer.com",
+        "name": "Alex Candidate"
+      }
+    }
+    ```
+*   **Validation Rules:**
+    *   `email`: Must be a valid email syntax, cannot be duplicate. Returns `409 Conflict` (via `EmailAlreadyExistsException`) if already in use.
+    *   `password`: Minimum length of 6 characters.
+
+#### `POST /auth/login`
+Validates user credentials and returns a JWT.
+*   **Request Body Example:**
+    ```json
+    {
+      "email": "candidate@engineer.com",
+      "password": "SecurePassword123"
+    }
+    ```
+*   **Response Body Example (200 OK):**
+    ```json
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "user": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "email": "candidate@engineer.com",
+        "name": "Alex Candidate"
+      }
+    }
+    ```
+*   **Error Codes:**
+    *   `401 Unauthorized`: Returned for incorrect password or non-existent email.
 
 ---
 
-## 4. Chat & Orchestration (`/chat`)
-| Path | Method | Description | Request | Response |
-| :--- | :--- | :--- | :--- | :--- |
-| `/message` | `POST` | User input (includes @-mentions) | `ChatMessageRequest` | `void (Async via WS)` |
-| `/{roomId}/history` | `GET` | Fetches canonical history | Query: `limit` | `List<MessageResponse>` |
-| `/pipeline/pause` | `POST` | Halts active model sequence | `{ "roomId" }` | `{ "status": "PAUSED" }` |
-| `/pipeline/resume`| `POST` | Restarts sequence from last state| `{ "roomId" }` | `{ "status": "ACTIVE" }` |
+### 3.2 Room Management Services (`/rooms`)
 
-#### Key DTO Shapes:
-**`ChatMessageRequest`**:
-```json
-{
-  "roomId": "UUID",
-  "content": "@Lead-Writer please draft the database schema.",
-  "isIntervention": false
-}
-```
+All room requests require a valid Bearer JWT.
 
-**`MessageResponse`** (The Canonical Schema):
-```json
-{
-  "messageId": "UUID",
-  "senderType": "USER | AI | SYSTEM",
-  "roleName": "Lead-Writer",
-  "modelId": "GEMINI_PRO",
-  "content": "...",
-  "timestamp": "ISO-8601",
-  "isMocked": false 
-}
-```
+#### `POST /rooms`
+Creates a new collaborative session.
+*   **Request Body Example:**
+    ```json
+    {
+      "name": "System Architecture Draft",
+      "objective": "Design the REST interface for a payments service",
+      "roleAssignments": [
+        {
+          "roleName": "LeadWriter",
+          "modelId": "GEMINI_PRO",
+          "uiColorHex": "#8B5CF6"
+        },
+        {
+          "roleName": "Critic",
+          "modelId": "FAKE_CLAUDE",
+          "uiColorHex": "#EAB308"
+        }
+      ],
+      "pipelineSequenceList": ["LeadWriter", "Critic"]
+    }
+    ```
+*   **Response Body Example (201 Created):**
+    ```json
+    {
+      "roomId": "8432b21c-cfdf-474c-81b4-2da7135be362",
+      "name": "System Architecture Draft",
+      "objective": "Design the REST interface for a payments service",
+      "status": "INITIALIZED",
+      "roleAssignments": [
+        {
+          "roleName": "LeadWriter",
+          "modelId": "GEMINI_PRO",
+          "uiColorHex": "#8B5CF6"
+        },
+        {
+          "roleName": "Critic",
+          "modelId": "FAKE_CLAUDE",
+          "uiColorHex": "#EAB308"
+        }
+      ],
+      "workflowState": {
+        "currentDraft": "",
+        "reviewComments": "",
+        "lastUpdatedAt": "2026-07-28T10:45:00.000"
+      }
+    }
+    ```
+
+#### `GET /rooms/{id}`
+Retrieves the complete room state including active workflow state.
+*   **Response Body Example (200 OK):**
+    ```json
+    {
+      "roomId": "8432b21c-cfdf-474c-81b4-2da7135be362",
+      "name": "System Architecture Draft",
+      "objective": "Design the REST interface for a payments service",
+      "status": "ACTIVE",
+      "roleAssignments": [...],
+      "workflowState": {
+        "currentDraft": "Payment REST API endpoints:\n1. POST /api/payments",
+        "reviewComments": "- Endpoint missing rate limiting fields.",
+        "lastUpdatedAt": "2026-07-28T10:46:12.441"
+      }
+    }
+    ```
+*   **Error Codes:**
+    *   `404 Not Found`: Room UUID does not exist in database.
 
 ---
 
-## 5. WebSocket Contract (STOMP)
+### 3.3 Chat & Orchestration Services (`/chat`)
 
-Conclave uses WebSockets for real-time broadcast of model turns. This is critical for observing the orchestration as it happens.
+All orchestration requests require a valid Bearer JWT.
 
-*   **Connection Endpoint:** `ws://localhost:8080/ws-conclave`
-*   **Topic Subscription:** `/topic/room/{roomId}`
+#### `POST /chat/message`
+Dispatches user messages to the orchestration pipeline.
+*   **Request Body Example:**
+    ```json
+    {
+      "roomId": "8432b21c-cfdf-474c-81b4-2da7135be362",
+      "content": "@LeadWriter draft the parameters for the checkout endpoint.",
+      "isIntervention": false
+    }
+    ```
+*   **Response (200 OK):** *(Body is empty; output streamed asynchronously via STOMP WebSockets)*
+*   **Authorization Rules:** Only the room's owner (`owner_id` in database) can submit messages to the room. If a different authenticated user attempts to message, the system throws `UnauthorizedAccessException` yielding a `403 Forbidden` response.
 
-### Broadcast Events
-The backend pushes a payload to the topic whenever the room state changes.
+#### `GET /chat/{roomId}/history`
+Fetches the canonical history list for the workspace.
+*   **Response Body Example (200 OK):**
+    ```json
+    [
+      {
+        "messageId": "ac82b3d2-3112-4c2c-882e-131154be1212",
+        "senderType": "USER",
+        "roleName": null,
+        "modelId": null,
+        "content": "@LeadWriter draft the parameters for the checkout endpoint.",
+        "timestamp": "2026-07-28T10:45:50.000",
+        "isMocked": false
+      },
+      {
+        "messageId": "bd382c1e-3fdf-441c-b29e-445a16df3323",
+        "senderType": "AI",
+        "roleName": "LeadWriter",
+        "modelId": "GEMINI_PRO",
+        "content": "Here is the structure for `POST /api/checkout`...",
+        "timestamp": "2026-07-28T10:46:02.122",
+        "isMocked": false
+      }
+    ]
+    ```
 
-**1. Turn Started Event** (Fires when a model begins "thinking"):
+#### `POST /chat/pipeline/pause`
+Halts sequential pipeline execution.
+*   **Request Body Example:**
+    ```json
+    {
+      "roomId": "8432b21c-cfdf-474c-81b4-2da7135be362"
+    }
+    ```
+*   **Response Body Example (200 OK):**
+    ```json
+    {
+      "status": "PAUSED"
+    }
+    ```
+
+#### `POST /chat/pipeline/resume`
+Resumes pipeline execution, triggering the next model sequentially.
+*   **Request Body Example:**
+    ```json
+    {
+      "roomId": "8432b21c-cfdf-474c-81b4-2da7135be362"
+    }
+    ```
+*   **Response Body Example (200 OK):**
+    ```json
+    {
+      "status": "ACTIVE"
+    }
+    ```
+
+---
+
+## 4. WebSocket STOMP Contract
+
+Real-time streaming, status changes, and notifications run over the STOMP message channel.
+
+*   **WebSocket Upgrade Endpoint:** `ws://localhost:8080/ws-conclave`
+*   **Room Subscription Path:** `/topic/room/{roomId}`
+
+### STOMP Broadcast Frame Schema
+
+#### 4.1 `TURN_STARTED`
+Broadcast immediately when a model is selected and execution begins:
 ```json
 {
   "type": "TURN_STARTED",
-  "roleName": "Code-Critic",
+  "roleName": "Critic",
   "modelId": "FAKE_CLAUDE",
   "isMocked": true
 }
 ```
 
-**2. Message Delta Event** (Fires for streaming content):
-*Note: Real Gemini calls stream chunks; Fake OpenAI/Claude calls simulate streaming with 50ms delays.*
+#### 4.2 `CONTENT_CHUNK`
+Word-by-word streaming updates:
 ```json
 {
   "type": "CONTENT_CHUNK",
-  "delta": "The database ",
-  "messageId": "UUID"
+  "delta": "This is a fragment ",
+  "messageId": "bd382c1e-3fdf-441c-b29e-445a16df3323"
 }
 ```
 
-**3. Turn Completed Event** (Fires when `WorkflowState` is updated):
+#### 4.3 `TURN_COMPLETED`
+Fires when the stream ends, logging token usage metrics:
 ```json
 {
   "type": "TURN_COMPLETED",
-  "messageId": "UUID",
-  "summary": "Updated WorkflowState: DB schema drafted.",
+  "messageId": "bd382c1e-3fdf-441c-b29e-445a16df3323",
+  "content": "The completed synthesized response block.",
   "usage": {
-    "promptTokens": 140,
+    "promptTokens": 145,
     "completionTokens": 320
   }
 }
 ```
 
-**4. System Intervention Event** (Fires when a user intervenes in the pipeline):
+#### 4.4 `SYSTEM_INTERVENTION`
+Sent when a user injects a manual override, or when an error occurs:
 ```json
 {
   "type": "SYSTEM_INTERVENTION",
-  "messageId": "UUID",
-  "content": "User intervention text..."
+  "messageId": "249d9c22-bcfb-4e6f-82ff-11a56cfbe929",
+  "content": "[Manual Correction]: Please focus only on PostgreSQL schemas."
 }
 ```
-
----
-
-## 6. Implementation Notes: Real vs. Fake
-
-| Feature | Live Provider: **Gemini** | Fake Provider: **OpenAI / Claude** |
-| :--- | :--- | :--- |
-| **Inference Type** | **Real API Call** (Google Vertex/AI) | **Fake ChatClient** (Internal Stub) |
-| **Latency** | 2s - 8s (Variable) | 1s - 3s (Simulated) |
-| **Streaming** | Real server-sent events | Local iterative broadcast |
-| **Token Tracking** | Metadata from API response | Character-based heuristic |
-| **Auth** | API Key required in `.env` | No external auth required |
-
-### Intervention Logic
-When `POST /chat/message` is called with `isIntervention: true`, the system:
-1.  Appends the message to the `conversation_history`.
-2.  Forces a re-summarization of the `WorkflowState`.
-3.  Broadcasts a `SYSTEM_INTERVENTION` event via WebSocket to signal to all clients that the pipeline context has been manually altered.
