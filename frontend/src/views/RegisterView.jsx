@@ -23,11 +23,9 @@ export default function RegisterView({ onSwitchView }) {
             {/* Desktop-grade Register Card */}
             <div className="w-full max-w-sm bg-brand-panel border border-brand-border rounded-xl p-8 shadow-2xl relative">
                 <div className="text-center mb-8">
-                    {/* Geometric Consensus Star Logo */}
                     <svg className="h-9 w-9 text-brand-accent mx-auto mb-4" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="2" strokeDasharray="3 3" className="opacity-30" />
-                        <path d="M50 8 C58 35 75 42 92 50 C75 58 58 65 50 92 C42 65 25 58 8 50 C25 42 42 35 50 8 Z" fill="currentColor" />
-                        <circle cx="50" cy="50" r="6" fill="#08080A" />
+                        <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" className="opacity-30" />
+                        <path d="M50 12 C57 37 73 43 88 50 C73 57 57 63 50 88 C43 57 27 50 12 50 C27 43 43 37 50 12 Z" fill="currentColor" />
                     </svg>
 
                     <h2 className="text-lg font-bold tracking-tight text-white font-mono uppercase">
