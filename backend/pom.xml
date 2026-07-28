@@ -13,7 +13,7 @@
 
     <groupId>com.conclave</groupId>
     <artifactId>conclave-backend</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>conclave-backend</name>
     <description>Conclave Backend Orchestration Engine</description>
 

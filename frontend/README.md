@@ -1,16 +1,55 @@
-# React + Vite
+# Conclave Frontend Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The Conclave client is a single-page React 19 application built using Vite, Tailwind CSS, Zustand global stores, and `@stomp/stompjs` for WebSocket streaming.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠️ CLI Operations & NPM Scripts
 
-## React Compiler
+Run these scripts from the `frontend/` directory:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Install node modules:
+```bash
+npm install
+```
 
-## Expanding the Oxlint configuration
+### Launch Vite development server:
+```bash
+npm run dev
+```
+Hosts HMR page contexts locally at `http://localhost:5173`.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+### Build production bundle:
+```bash
+npm run build
+```
+Compiles and bundles the application inside `dist/`.
+
+### Run component unit tests:
+```bash
+npm run test
+```
+Executes the Vitest test runner, testing markdown parser outputs, user/AI alignments, and collapsed Sidebar states.
+
+### Run Playwright E2E integration tests:
+```bash
+npm run test:e2e
+```
+Launches the local Vite server and runs simulated user registration, login, room setup, and workspace chat interaction specs.
+
+---
+
+## 🗃️ Global State Stores (Zustand)
+
+Global client states are managed via lightweight stores inside `src/store/`:
+- `authStore.js`: Coordinates user registration, login status, and caches JWT credentials inside `localStorage` for session maintenance.
+- `roomStore.js`: Manages list of rooms, active selected room, and initializes new room configurations.
+- `chatStore.js`: Holds conversation message logs, streams incoming delta chunks, tracks audited token usage, and consolidates the active WorkflowState (draft & review comments).
+
+---
+
+## 🎭 Playwright E2E Configuration
+
+- **Test Directory:** Tests are written inside `frontend/e2e/conclave.spec.js`.
+- **API Mocking:** Utilizes Playwright `page.route` to mock registration, login, and room spec queries. This ensures that the test runner executes fast and has no dependencies on active database records.
+- **Vite Autolaunch:** The configuration (`playwright.config.js`) is configured with a `webServer` block that automatically spins up the Vite server on port `5173` if it's not already running.

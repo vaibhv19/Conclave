@@ -1,75 +1,46 @@
-# JWT Authentication Strategy
+# Learning 02: JWT Authentication Strategy
 
-This document details the stateless JWT authentication strategy and configuration designed for **Conclave**.
+## 1. Problem Statement
+In a multi-user collaborative workspace like Conclave, endpoints (like room creation and pipeline controls) must be protected. Standard session-based (stateful) authentication hinders horizontal scale, introduces server-side session tracking bloat, and complicates asynchronous WebSocket channel handshakes.
 
----
+## 2. Decision Rationale
+We chose a stateless **JWT (JSON Web Token)** authentication strategy:
+- Enables stateless request verification at the filter layer without database queries on every HTTP request.
+- Permits passing auth tokens in WebSocket STOMP handshake connect headers, securing socket connections seamlessly.
+- Fits modern microservices-ready design criteria.
 
-## 🔐 1. Authentication Architecture (Stateless)
+## 3. Alternatives Considered
+- **Stateful HTTP Sessions:** Rejected due to replication requirements across distributed backends and incompatibility with stateless WebSocket interceptors.
+- **API Key Authentication:** Rejected because it lacks expiration timelines, user context profiles, and standard claim verification mechanisms.
 
-Conclave uses stateless JWT-based session management to protect restricted API endpoints, ensuring maximum scale and horizontal compatibility.
+## 4. Internal Working
+1.  **Generation:** AuthController validates credentials via BCrypt, issues token containing claims (`sub` = email, `iat`, `exp`), signed with a HMAC-SHA256 secret.
+2.  **Filter Interception:** `JwtAuthenticationFilter` checks `Authorization: Bearer <token>` header, decodes signature, parses user context, and loads it into the `SecurityContextHolder`.
+3.  **WebSocket Handshake Check:** Custom STOMP interceptor decodes incoming connection headers before completing connection protocol setups.
 
-```text
-  +------------------+          1. POST /api/auth/login          +------------------+
-  |                  +------------------------------------------>|                  |
-  |                  |          (credentials payload)            |                  |
-  |                  |                                           |  AuthController  |
-  |                  |          2. HTTP 200 OK                   |                  |
-  |                  |<------------------------------------------+  (BCrypt Check)  |
-  |                  |          (returns Bearer token + User)    |                  |
-  |  Vite Frontend   |                                           +------------------+
-  |  (React Store)   |
-  |                  |          3. GET /api/rooms                +------------------+
-  |                  +------------------------------------------>|  JwtAuthFilter   |
-  |                  |          (Authorization: Bearer <token>)  |                  |
-  |                  |                                           |  (Context setup) |
-  |                  |          4. HTTP 200 OK                   |        |         |
-  |                  |<------------------------------------------+  Restricted Route|
-  +------------------+                                           +------------------+
-```
+## 5. Conclave Implementation
+- BCrypt hashing and stateless filter configurations are defined in [SecurityConfig.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/config/SecurityConfig.java).
+- Token decoding is processed in [JwtTokenProvider.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/security/JwtTokenProvider.java) and verified by [JwtAuthenticationFilter.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/security/JwtAuthenticationFilter.java).
+- Authenticated endpoints are mapped inside [AuthController.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/controller/AuthController.java).
 
----
+## 6. Key Classes
+- [JwtTokenProvider.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/security/JwtTokenProvider.java) - Decodes/generates signed JWTs.
+- [SecurityConfig.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/config/SecurityConfig.java) - Security filter chain setup.
+- [AuthController.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/controller/AuthController.java) - Auth endpoints.
 
-## ⚡ 2. Token Lifecycle & Structure
+## 7. Common Pitfalls
+- **Expired Token Crash:** Tokens expire after 24 hours. The frontend store must handle token expiration by removing user credentials and redirecting to the login screen.
+- **Weak Secret Key:** HS256 requires secret project keys of at least 256 bits (32 characters). Short strings will throw a startup error.
 
-### Signature
-- Algorithm: **HMAC SHA-256 (HS256)**
-- Key requirements: Minimum 256 bits (32 bytes). In development, a fallback key is embedded, but in production this is configured via:
-  `conclave.jwt.secret` (environment variable injection).
+## 8. Debugging Tips
+- Trace incoming header filters inside `JwtAuthenticationFilter.doFilterInternal` by logging claims.
+- Inspect JSON signatures via external debugger platforms (e.g. `jwt.io`).
 
-### Payload Details
-- **Subject (`sub`):** The user's email address (unique identifier).
-- **Issued At (`iat`):** Timestamp indicating when the token was created.
-- **Expiration (`exp`):** Timestamp indicating when the token expires (default is 24 hours, configurable via `conclave.jwt.expiration`).
+## 9. Interview Questions
+1.  *What claims do you place in the JWT token payload, and why did you choose them?*
+2.  *Where does the JwtAuthenticationFilter sit in the standard Spring Security Filter Chain?*
+3.  *How do you handle JWT token validation inside WebSocket channels in Spring Boot?*
 
----
-
-## 🛡️ 3. Spring Security Filter Chain & Configuration
-
-### Filter Chain Ordering
-The custom `JwtAuthenticationFilter` intercepts requests and is registered **before** Spring Security's `UsernamePasswordAuthenticationFilter`.
-
-```text
-[HTTP Request]
-       |
-       ▼
-[CorsFilter] (Permits origins, e.g. http://localhost:5173)
-       |
-       ▼
-[JwtAuthenticationFilter]
-       |---> If starts with "Bearer " and valid: sets SecurityContextHolder Authentication
-       |---> Else: skips context setup (remains unauthenticated)
-       ▼
-[UsernamePasswordAuthenticationFilter] (Default basic auth checks)
-       |
-       ▼
-[AuthorizationFilter] (Asserts route rule access)
-       |---> Public path (/api/auth/**): OK
-       |---> Restricted path (/api/**): Check Authentication in context
-       ▼
-[Controller Endpoint]
-```
-
-### Path Protection Rules
-- **Public Routes:** `/api/auth/**` (Registration and Login) are accessible by anyone.
-- **Secured Routes:** `/api/**` paths require a valid Bearer token. Attempts to access these paths unauthenticated will result in a `403 Forbidden` response.
-- **CORS Config:** Configured globally to permit incoming requests from `http://localhost:5173` with credentials allowed, enabling integration with the local Vite dashboard.
+## 10. References
+- [Spring Security Reference Manual](https://spring.io/projects/spring-security)
+- [RFC 7519: JSON Web Token Spec](https://tools.ietf.org/html/rfc7519)
