@@ -14,7 +14,7 @@ This flow handles the transition from an empty state to an orchestrated multi-mo
 4.  **Registry Binding:** Backend validates the mapping against the Model Registry (Spring Boot).
 5.  **State Initialization:** A new `WorkflowState` is created, and the room status is set to `INITIALIZED` in PostgreSQL (Spring Boot).
 6.  **System Prompting:** Backend generates a hidden "Context Foundation" message based on roles and the task objective (Spring Boot).
-7.  **Client Sync:** Backend returns the `RoomResponse`; Frontend navigates to the chat view and opens a WebSocket connection to `/topic/room/{roomId}` (React).
+7.  **Client Sync:** Backend returns the `RoomResponse`; Frontend navigates to the chat view, mounts the Level 0 main background grid with the Level 1 Sidebar and Console containers, and opens a WebSocket connection to `/topic/room/{roomId}` (React).
 
 ---
 
