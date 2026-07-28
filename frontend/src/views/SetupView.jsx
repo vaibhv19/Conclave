@@ -63,35 +63,31 @@ export default function SetupView() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-purple-500 selection:text-white relative overflow-hidden pb-12">
-            {/* Background glow effects */}
-            <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-900/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-blue-900/10 rounded-full blur-3xl pointer-events-none" />
-
-            {/* Header */}
-            <header className="border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
-                <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="min-h-screen bg-brand-bg text-zinc-100 flex flex-col font-sans select-none pb-16">
+            {/* Low-profile Operations Header */}
+            <header className="border-b border-brand-border bg-brand-card sticky top-0 z-50">
+                <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-purple-950/50">
-                            <span className="font-extrabold text-lg text-white">C</span>
+                        <div className="h-7 w-7 rounded bg-brand-accent flex items-center justify-center">
+                            <span className="font-mono font-black text-sm text-white">C</span>
                         </div>
-                        <div>
-                            <span className="font-bold text-lg tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-200">
+                        <div className="flex items-baseline space-x-2">
+                            <span className="font-mono text-xs font-bold uppercase tracking-wider text-white">
                                 CONCLAVE
                             </span>
-                            <span className="text-[10px] block text-slate-500 font-mono tracking-widest uppercase">
-                                Setup Wizard
+                            <span className="text-[10px] text-brand-textMuted font-mono uppercase tracking-widest">
+                                / workspace-initializer
                             </span>
                         </div>
                     </div>
 
                     <div className="flex items-center space-x-4">
-                        <span className="text-sm text-slate-400">
-                            Hi, <strong className="text-slate-200">{user?.name}</strong>
+                        <span className="text-xs text-brand-textMuted font-mono">
+                            OPERATOR: <strong className="text-zinc-200">{user?.name}</strong>
                         </span>
                         <button
                             onClick={logout}
-                            className="text-xs font-semibold py-1.5 px-3 rounded-lg border border-slate-800 hover:bg-slate-900 transition-colors"
+                            className="text-[10px] font-mono font-bold uppercase tracking-wider py-1 px-2.5 rounded bg-brand-surface border border-brand-border hover:bg-zinc-800 transition-colors focus:outline-none"
                         >
                             Sign Out
                         </button>
@@ -99,40 +95,44 @@ export default function SetupView() {
                 </div>
             </header>
 
-            {/* Content */}
-            <main className="flex-1 max-w-4xl mx-auto px-6 py-12 w-full relative z-10">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-extrabold tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400">
+            {/* Content Container */}
+            <main className="flex-1 max-w-3xl mx-auto px-6 py-10 w-full">
+                <div className="mb-8 border-b border-brand-border pb-6">
+                    <h1 className="text-lg font-bold tracking-tight text-white font-mono uppercase">
                         Create Workspace
                     </h1>
-                    <p className="text-slate-400 text-sm">
-                        Define your project objective and orchestrate target AI model roles.
+                    <p className="text-brand-textMuted text-xs mt-1">
+                        Configure room metadata and AI consensus pipeline specifications.
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-8">
+                <form onSubmit={handleSubmit} className="space-y-6">
                     {error && (
-                        <div className="bg-red-950/50 border border-red-800/30 text-red-400 px-4 py-3 rounded-xl text-sm relative">
+                        <div className="bg-red-950/20 border border-red-900/40 text-red-400 px-4 py-2.5 rounded-lg text-xs relative flex items-center justify-between font-mono">
                             <span>{error}</span>
                             <button
                                 type="button"
                                 onClick={clearError}
-                                className="absolute top-0 bottom-0 right-0 px-4 py-3 text-red-400 font-bold"
+                                className="text-red-400 hover:text-red-300 font-bold focus:outline-none"
+                                aria-label="Close error"
                             >
                                 &times;
                             </button>
                         </div>
                     )}
 
-                    {/* Room Basic Info */}
-                    <div className="bg-slate-900/40 border border-slate-800/60 rounded-3xl p-6 shadow-xl backdrop-blur-sm space-y-6">
-                        <h2 className="text-lg font-bold border-b border-slate-800/60 pb-3 text-purple-400">
-                            1. Room Specification
-                        </h2>
+                    {/* Room Specification Panel */}
+                    <div className="bg-brand-card border border-brand-border rounded-xl p-6 space-y-5">
+                        <div className="flex items-center space-x-2 border-b border-brand-border pb-3">
+                            <span className="text-xs text-brand-accent font-mono">01 //</span>
+                            <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">
+                                ROOM PARAMETERS
+                            </h2>
+                        </div>
 
-                        <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                                Workspace Title
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-brand-textMuted">
+                                WORKSPACE TITLE
                             </label>
                             <input
                                 type="text"
@@ -141,13 +141,13 @@ export default function SetupView() {
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder="e.g. Slogan Draft Campaign"
-                                className="w-full px-4 py-3 rounded-xl bg-slate-950/50 border border-slate-800 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all duration-200"
+                                className="w-full px-3 py-2 text-xs rounded-lg bg-brand-surface border border-brand-border text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-brand-borderLight transition-colors font-mono"
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                                Room Objective
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-brand-textMuted">
+                                PROJECT OBJECTIVE
                             </label>
                             <textarea
                                 required
@@ -156,22 +156,25 @@ export default function SetupView() {
                                 value={objective}
                                 onChange={(e) => setObjective(e.target.value)}
                                 placeholder="State the objective that the models will collaborate to draft and review..."
-                                className="w-full px-4 py-3 rounded-xl bg-slate-950/50 border border-slate-800 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all duration-200 resize-none"
+                                className="w-full px-3 py-2 text-xs rounded-lg bg-brand-surface border border-brand-border text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-brand-borderLight transition-colors resize-none font-sans"
                             />
                         </div>
                     </div>
 
-                    {/* Role Assignments Setup */}
-                    <div className="bg-slate-900/40 border border-slate-800/60 rounded-3xl p-6 shadow-xl backdrop-blur-sm space-y-6">
-                        <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
-                            <h2 className="text-lg font-bold text-purple-400">
-                                2. AI Role Assignments
-                            </h2>
+                    {/* Role Assignments Panel */}
+                    <div className="bg-brand-card border border-brand-border rounded-xl p-6 space-y-5">
+                        <div className="flex items-center justify-between border-b border-brand-border pb-3">
+                            <div className="flex items-center space-x-2">
+                                <span className="text-xs text-brand-accent font-mono">02 //</span>
+                                <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">
+                                    AI EXECUTION PIPELINE
+                                </h2>
+                            </div>
                             <button
                                 type="button"
                                 onClick={handleAddRole}
                                 disabled={loading}
-                                className="text-xs font-semibold bg-purple-950/50 text-purple-400 border border-purple-800/30 py-1.5 px-3 rounded-lg hover:bg-purple-900/50 transition-colors"
+                                className="text-[10px] font-mono font-bold uppercase tracking-wider bg-brand-surface border border-brand-border text-zinc-300 py-1 px-2.5 rounded hover:bg-zinc-800 transition-colors focus:outline-none"
                             >
                                 + Add Agent Role
                             </button>
@@ -179,11 +182,11 @@ export default function SetupView() {
 
                         <div className="space-y-4">
                             {roles.map((role, index) => (
-                                <div key={index} className="flex flex-col md:flex-row items-stretch md:items-center gap-4 bg-slate-950/40 border border-slate-850 p-4 rounded-2xl relative group">
+                                <div key={index} className="flex flex-col md:flex-row items-stretch md:items-center gap-4 bg-brand-surface/40 border border-brand-border p-4 rounded-lg relative">
                                     {/* Role Name */}
                                     <div className="flex-1">
-                                        <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">
-                                            Role Name (no @ prefix)
+                                        <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted mb-1.5">
+                                            ROLE NAME
                                         </label>
                                         <input
                                             type="text"
@@ -192,23 +195,23 @@ export default function SetupView() {
                                             value={role.roleName}
                                             onChange={(e) => handleRoleChange(index, 'roleName', e.target.value.replace(/[^a-zA-Z0-9_-]/g, ''))}
                                             placeholder="e.g. Copywriter"
-                                            className="w-full px-3 py-2 rounded-lg bg-slate-900/50 border border-slate-800 text-slate-200 placeholder-slate-650 focus:outline-none focus:border-purple-500 text-sm transition-all duration-150"
+                                            className="w-full px-2.5 py-1.5 rounded bg-brand-surface border border-brand-border text-zinc-200 placeholder-zinc-700 focus:outline-none focus:border-brand-borderLight text-xs transition-colors font-mono"
                                         />
                                     </div>
 
                                     {/* Model ID Dropdown */}
                                     <div className="flex-1">
-                                        <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">
-                                            Assigned Model Engine
+                                        <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted mb-1.5">
+                                            MODEL ENGINE
                                         </label>
                                         <select
                                             value={role.modelId}
                                             disabled={loading}
                                             onChange={(e) => handleRoleChange(index, 'modelId', e.target.value)}
-                                            className="w-full px-3 py-2 rounded-lg bg-slate-900/50 border border-slate-800 text-slate-300 focus:outline-none focus:border-purple-500 text-sm transition-all duration-150"
+                                            className="w-full px-2.5 py-1.5 rounded bg-brand-surface border border-brand-border text-zinc-300 focus:outline-none focus:border-brand-borderLight text-xs transition-colors font-mono"
                                         >
                                             {MODEL_OPTIONS.map(opt => (
-                                                <option key={opt.value} value={opt.value} className="bg-slate-950 text-slate-300">
+                                                <option key={opt.value} value={opt.value} className="bg-brand-bg text-zinc-300">
                                                     {opt.label}
                                                 </option>
                                             ))}
@@ -217,20 +220,20 @@ export default function SetupView() {
 
                                     {/* Color Select */}
                                     <div>
-                                        <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">
-                                            UI Theme Color
+                                        <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted mb-1.5">
+                                            THEME COLOR
                                         </label>
-                                        <div className="flex items-center space-x-2 py-1">
+                                        <div className="flex items-center space-x-1.5 py-1">
                                             {PRESET_COLORS.map(color => (
                                                 <button
                                                     key={color}
                                                     type="button"
                                                     disabled={loading}
                                                     onClick={() => handleRoleChange(index, 'uiColorHex', color)}
-                                                    className={`h-6 w-6 rounded-full border transition-transform duration-100 ${
+                                                    className={`h-4 w-4 rounded-full border transition-all duration-100 ${
                                                         role.uiColorHex.toLowerCase() === color.toLowerCase()
-                                                            ? 'scale-125 border-white shadow-md'
-                                                            : 'border-slate-800 hover:scale-110'
+                                                            ? 'scale-110 border-white ring-1 ring-brand-accent/50'
+                                                            : 'border-transparent hover:scale-105'
                                                     }`}
                                                     style={{ backgroundColor: color }}
                                                 />
@@ -245,9 +248,9 @@ export default function SetupView() {
                                                 type="button"
                                                 onClick={() => handleRemoveRole(index)}
                                                 disabled={loading}
-                                                className="text-xs text-red-500/80 hover:text-red-400 font-semibold p-2"
+                                                className="text-[10px] font-mono font-bold uppercase tracking-wider text-red-500 hover:text-red-400 transition-colors p-1"
                                             >
-                                                Remove
+                                                [Remove]
                                             </button>
                                         </div>
                                     )}
@@ -260,15 +263,15 @@ export default function SetupView() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 font-bold text-white shadow-xl shadow-purple-900/25 hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 flex items-center justify-center text-md"
+                        className="w-full py-2.5 rounded-lg bg-brand-accent hover:bg-brand-accentHover font-semibold text-xs text-white transition-colors duration-150 flex items-center justify-center focus:outline-none focus:ring-1 focus:ring-brand-accent/50"
                     >
                         {loading ? (
-                            <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                            <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                             </svg>
                         ) : (
-                            'Initialize Consensus Workspace'
+                            'INITIALIZE CONSENSUS WORKSPACE'
                         )}
                     </button>
                 </form>

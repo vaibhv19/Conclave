@@ -109,13 +109,9 @@ export default function RoomView() {
     const activePipelineRole = activeRoom?.roleAssignments?.[activeRoom?.currentPipelineIndex]?.roleName || '';
 
     return (
-        <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-purple-500 selection:text-white relative overflow-hidden h-screen transition-all duration-300 ${
-            isPaused ? 'border-4 border-amber-500/40 shadow-[inset_0_0_50px_rgba(245,158,11,0.05)]' : ''
+        <div className={`min-h-screen bg-brand-bg text-zinc-100 flex flex-col font-sans selection:bg-brand-accent/20 relative overflow-hidden h-screen transition-all duration-300 ${
+            isPaused ? 'ring-1 ring-amber-500/30' : ''
         }`}>
-            {/* Background glow effects */}
-            <div className="absolute top-0 left-1/3 w-[500px] h-[500px] bg-purple-900/5 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 right-1/3 w-[500px] h-[500px] bg-blue-900/5 rounded-full blur-3xl pointer-events-none" />
-
             {/* Alert Banner for PAUSED interventions */}
             <AlertBanner 
                 isPaused={isPaused} 
@@ -124,51 +120,54 @@ export default function RoomView() {
                 actionLoading={actionLoading} 
             />
 
-            {/* Header */}
-            <header className="border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40 flex-none">
-                <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            {/* Header Console */}
+            <header className="border-b border-brand-border bg-brand-card flex-none h-14">
+                <div className="h-full px-6 flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                         <button
                             onClick={clearActiveRoom}
-                            className="text-xs font-semibold py-1.5 px-3 rounded-lg border border-slate-800 hover:bg-slate-900 transition-colors text-slate-450 focus:outline-none focus:ring-1 focus:ring-slate-800"
+                            className="text-[10px] font-mono font-bold uppercase tracking-wider py-1.5 px-3 rounded bg-brand-surface border border-brand-border hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200 focus:outline-none"
                         >
-                            &larr; Exit Room
+                            &larr; Exit Console
                         </button>
-                        <div>
-                            <h2 className="text-lg font-extrabold tracking-tight text-white flex items-center gap-2 select-none">
+                        <div className="flex items-center space-x-2.5">
+                            <h2 className="text-sm font-bold text-white font-mono flex items-center gap-2 select-none">
                                 {activeRoom?.name}
-                                <span className={`h-2.5 w-2.5 rounded-full ${wsConnected ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`} title={wsConnected ? 'WebSocket Connected' : 'WebSocket Standby'} />
+                                <span 
+                                    className={`h-1.5 w-1.5 rounded-full ${wsConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} 
+                                    title={wsConnected ? 'WebSocket Connected' : 'WebSocket Standby'} 
+                                />
                             </h2>
-                            <p className="text-[10px] text-slate-500 font-mono tracking-tight mt-0.5 truncate max-w-sm">
-                                ID: {roomId}
-                            </p>
+                            <span className="text-[10px] text-zinc-600 font-mono select-all hidden sm:inline">
+                                [PID: {roomId?.substring(0, 8)}]
+                            </span>
                         </div>
                     </div>
 
                     {/* Pipeline Controls */}
                     <div className="flex items-center space-x-3">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border transition-colors select-none ${
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors select-none ${
                             activeRoom?.status === 'ACTIVE'
-                                ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/40'
+                                ? 'bg-emerald-950/20 text-emerald-400 border-emerald-900/30'
                                 : activeRoom?.status === 'PAUSED'
-                                ? 'bg-amber-950/40 text-amber-400 border-amber-800/40'
-                                : 'bg-slate-900 text-slate-450 border-slate-800'
+                                ? 'bg-amber-950/20 text-amber-400 border-amber-900/30'
+                                : 'bg-zinc-900 text-zinc-500 border-brand-border'
                         }`}>
-                            STATUS: {activeRoom?.status}
+                            STATUS::{activeRoom?.status}
                         </span>
 
-                        <div className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 p-1 rounded-lg">
+                        <div className="flex items-center gap-1 bg-brand-surface border border-brand-border p-1 rounded">
                             <button
                                 onClick={handlePause}
                                 disabled={actionLoading || activeRoom?.status !== 'ACTIVE'}
-                                className="px-3 py-1.5 rounded text-xs font-semibold bg-slate-950 hover:bg-red-950/20 text-slate-400 hover:text-red-400 disabled:opacity-30 disabled:pointer-events-none transition-colors focus:outline-none"
+                                className="px-2 py-1 rounded text-[10px] font-mono font-bold uppercase text-zinc-400 hover:text-red-400 disabled:opacity-20 disabled:pointer-events-none transition-colors focus:outline-none"
                             >
                                 Pause
                             </button>
                             <button
                                 onClick={handleResume}
                                 disabled={actionLoading || (activeRoom?.status !== 'PAUSED' && activeRoom?.status !== 'INITIALIZED')}
-                                className="px-3 py-1.5 rounded text-xs font-semibold bg-purple-650 hover:bg-purple-550 text-white disabled:opacity-30 disabled:pointer-events-none transition-all focus:outline-none"
+                                className="px-2 py-1 rounded text-[10px] font-mono font-bold uppercase bg-brand-accent hover:bg-brand-accentHover text-white disabled:opacity-20 disabled:pointer-events-none transition-colors focus:outline-none"
                             >
                                 Resume
                             </button>
@@ -177,9 +176,9 @@ export default function RoomView() {
                 </div>
             </header>
 
-            {/* Splitter Panel Layout */}
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden w-full max-w-7xl mx-auto px-6 py-6 gap-6 relative z-10 min-h-0">
-                {/* 1. Sidebar Panel */}
+            {/* Splitter Panel Layout (IDE-like split) */}
+            <div className="flex-1 flex flex-row overflow-hidden w-full min-h-0 relative">
+                {/* 1. Left Sidebar Panel */}
                 <Sidebar 
                     objective={activeRoom?.objective} 
                     workflowState={workflowState} 
@@ -187,18 +186,18 @@ export default function RoomView() {
                     roleAssignments={activeRoom?.roleAssignments} 
                 />
 
-                {/* 2. Main Chat Panel */}
-                <main className="flex-1 flex flex-col bg-slate-900/30 border border-slate-800/60 rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden min-h-0">
+                {/* 2. Main Chat Workspace */}
+                <main className="flex-1 flex flex-col bg-brand-bg overflow-hidden min-h-0 relative">
                     {/* Message stream */}
                     <div className="flex-1 overflow-y-auto p-6 space-y-6">
                         {messages.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-center text-slate-500 px-4 select-none">
-                                <svg className="h-12 w-12 text-slate-800 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="h-full flex flex-col items-center justify-center text-center text-zinc-500 px-4 select-none">
+                                <svg className="h-8 w-8 text-zinc-700 mb-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                 </svg>
-                                <h4 className="text-sm font-bold text-slate-450">Tactical Consensus Stream Active</h4>
-                                <p className="text-xs text-slate-600 max-w-sm mt-1">
-                                    Send a command below. Mention a target agent role (e.g. <strong className="text-slate-500">@Lead-Writer</strong>) to initialize consensus.
+                                <h4 className="text-xs font-mono font-bold text-zinc-400">STRATEGY STREAM READY</h4>
+                                <p className="text-[10px] text-brand-textMuted max-w-sm mt-1">
+                                    Initiate command sequences by mentioning target roles (e.g. <span className="font-mono text-zinc-300">@Lead-Writer</span>).
                                 </p>
                             </div>
                         ) : (
