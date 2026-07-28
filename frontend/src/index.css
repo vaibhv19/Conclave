@@ -13,13 +13,58 @@
     overflow-x: hidden;
   }
 
+  /* Global input normalization: removes native OS defaults and resets to Conclave's dark theme */
+  input,
+  textarea,
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: #18181C;
+    background-image: none;
+    color: #F4F4F6;
+    border: 1px solid #1F1F24;
+    border-radius: 6px;
+    caret-color: #8B5CF6;
+    outline: none;
+    font-family: inherit;
+    font-size: 100%;
+    line-height: inherit;
+    margin: 0;
+    transition: border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  input:hover,
+  textarea:hover,
+  select:hover {
+    border-color: #2E2E36;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    border-color: #2E2E36;
+    box-shadow: 0 0 0 1px #2E2E36;
+  }
+
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* browser autofill override (requires !important to override Chromium user-agent default styles) */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
   input:-webkit-autofill:active,
   textarea:-webkit-autofill,
   textarea:-webkit-autofill:hover,
-  textarea:-webkit-autofill:focus {
+  textarea:-webkit-autofill:focus,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus {
     -webkit-text-fill-color: #F4F4F6 !important;
     -webkit-box-shadow: 0 0 0px 1000px #18181C inset !important;
     caret-color: #F4F4F6 !important;
@@ -46,6 +91,57 @@
   ::selection {
     background-color: rgba(139, 92, 246, 0.2);
     color: #F4F4F6;
+  }
+}
+
+@layer components {
+  /* Unified Shared Input Component Style (Single Source of Truth) - Standard CSS to prevent PostCSS resolve issues */
+  .conclave-input {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    display: block;
+    width: 100%;
+    background-color: #18181C;
+    background-image: none;
+    color: #F4F4F6;
+    border: 1px solid #1F1F24;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+    caret-color: #8B5CF6;
+    outline: none;
+    transition: border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .conclave-input::placeholder {
+    color: #52525B;
+  }
+
+  .conclave-input:hover {
+    border-color: #2E2E36;
+  }
+
+  .conclave-input:focus {
+    outline: none;
+    border-color: #2E2E36;
+    box-shadow: 0 0 0 1px #2E2E36;
+  }
+
+  .conclave-input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Warning state for inputs (e.g. paused) */
+  .conclave-input-warning {
+    border-color: rgba(234, 179, 8, 0.3);
+  }
+  .conclave-input-warning:focus {
+    border-color: #EAB308;
+    box-shadow: 0 0 0 1px #EAB308;
   }
 }
 
