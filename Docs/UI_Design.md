@@ -12,7 +12,8 @@ Conclave's brand identity represents its core function: **multi-agent LLM consen
 Rather than an amateur letter inside a rounded square, the logo is a geometric **Consensus Star**:
 - **Outer Orbital Ring (Dashed)**: Represents the multiple independent AI engines orbiting the workspace (Google Gemini, OpenAI GPT, Anthropic Claude).
 - **Converging Triad Star (Four-Pointed Vesica Piscis)**: Represents vectors of thought from different model brains converging to a single central consensus point.
-- **Negative Space Central Chamber**: The absolute center represents the "Conclave" — the shared workspace state where consensus is finalized.
+- **Background Independence**: Made fully solid without background cutout dependencies so it renders crisply on any theme color (Level 0 base, Level 1 headers, and monochrome favicon assets).
+- **Cache-Busting Favicon**: Linked with version parameters (`favicon.svg?v=2`) to force prompt updates across browser sessions.
 - **Monochrome-first Compatibility**: The geometry scales cleanly down to `16px` (favicon) and up to high-resolution branding headers.
 
 ---
@@ -24,7 +25,7 @@ To achieve the premium, low-contrast aesthetic of tools like Claude, Linear, and
 | Surface Level | HSL / Hex Code | Component Usage | Rationale |
 | :--- | :--- | :--- | :--- |
 | **Level 0 (Base)** | `#08080A` | Main page canvas background | Deep, low-fatigue slate base. |
-| **Level 1 (Panels)** | `#121214` | Sidebars, header decks, cards | Isolates layout sections. |
+| **Level 1 (Panels)** | `#121214` | Solid opaque headers, sidebars, cards | Isolates layout sections. No transparency. |
 | **Level 2 (Elevated)** | `#18181C` | Input boxes, buttons, code blocks | Surface for actionable inputs. |
 | **Level 3 (Active)** | `#222227` | Active selection, button hover | Direct feedback state. |
 | **Border (Subtle)** | `#1F1F24` | Default container separators | Thin 1px grid alignments. |
