@@ -28,13 +28,12 @@ one conversation — no more manually copy-pasting context between tabs.
 
 ## Frontend Layer (React)
 
-- Chat room UI — different colored bubbles per model, so it's visually clear who said what
-- @-mention turn-taking — you direct which model responds next (you're the moderator, not
-  an automated one)
-- Shared context view — every model sees the same conversation history regardless of who's
-  replying
-- Pause & intervene control — stop the flow mid-turn-sequence and inject your own message
-  before it continues
+- **Premium Console Layout**: Engineered as a flat, high-density split panel (Level 0 main background, Level 1 sidebar/header, Level 2 inputs/cards, Level 3 active hover states).
+- **Geometric Consensus Branding**: Integrated custom 4-pointed Consensus Star logo that functions cleanly as a favicon and monochrome-compatible asset.
+- **Form Autofill Overrides**: Overrides browser default credentials autofill to prevent yellow/white input box backgrounds.
+- **@-mention turn-taking**: Moderated conversation control using popover mention menus.
+- **Shared context view**: Monospace telemetry dashboards and side panels to track active objective states, consensus drafts, and token consumption metrics.
+- **Pause & intervene control**: Diagonally striped warning decks with manual overrides to pause, inject corrections, and resume the active sequence.
 
 ## Realtime Layer
 
