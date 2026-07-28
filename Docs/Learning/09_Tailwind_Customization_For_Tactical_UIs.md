@@ -1,14 +1,15 @@
 # Learning 09: Tailwind Customization for Tactical UIs
 
 ## 1. Problem Statement
-Collaborative engineering rooms require dense, high-contrast, visual interfaces to convey system state (like generating, paused, or intervened) immediately. Standard SaaS landing page styles fail to reflect professional software layouts, introduce excessive empty whitespace, and suffer from poor text contrast and browser default credentials autofill styling overrides.
+Collaborative engineering rooms require dense, high-contrast, visual interfaces to convey system state (like generating, paused, or intervened) immediately. Standard SaaS landing page styles fail to reflect professional software layouts. Furthermore, boxing every element inside nested rounded border cards causes layout clutter and visual fatigue.
 
 ## 2. Decision Rationale
-We implemented a premium, level-based dark desktop console design utilizing **Tailwind CSS** configurations:
+We implemented a premium, level-based dark desktop console design utilizing **Tailwind CSS** configurations, with a strong focus on **container reduction** inspired by Trajectory:
 - **Level 0 (Base Canvas)**: Deep Slate Charcoal (`#08080A`) for background consistency.
 - **Level 1 (Panels)**: Dark Slate Surface (`#121214`) for sidebar headers.
 - **Level 2 (Elevated Surfaces)**: Raised Slate (`#18181C`) for input fields, buttons, and code blocks.
 - **Level 3 (Interactive Active States)**: Active Surface (`#222227`) for hovers and active lists.
+- **Layout Rhythm**: Removed outer card frames and box borders around sections, replacing them with open whitespace (`pt-16 pb-12`), horizontal separators (`divide-y divide-brand-border`), and typography-led alignment structures.
 - **Form Autofill Overrides**: Custom CSS overrides to force dark background styling on autofilled input boxes.
 - **Typography Scale**: Standardized `Inter` for clean sans-serif UI, and `JetBrains Mono` / `SF Mono` for status tags and telemetries.
 
@@ -34,14 +35,14 @@ We implemented a premium, level-based dark desktop console design utilizing **Ta
 
 ## 7. Common Pitfalls
 - **Autofill Background Spill:** Browsers dynamically force input backgrounds to yellow/white on credentials recall, breaking the dark aesthetic. Add absolute inset shadow declarations in CSS.
-- **Animation Performance Lag:** Running full-screen animations during real-time chunk streams degrades rendering performance. Limit animation scopes to local elements.
+- **Visual Clutter (Card Fatigue):** Wrapping every section in card borders makes the page feel segmented. Use spacing (`space-y-12`) and typographic sectioning first.
 
 ## 8. Debugging Tips
 - Inspect rendered elements in browser Developer Tools to check applied Tailwind utility classes.
 - Validate WCAG compliance using automated audits (e.g. Lighthouse, axe-core extensions).
 
 ## 9. Interview Questions
-1.  *What are the core design tokens of the Level 0 - Level 3 dark console layout, and how are they declared in Tailwind?*
+1.  *What are the core design tokens of the Level 0 - Level 3 dark console layout, and how do they support card container reduction?*
 2.  *How do you prevent webkit browsers from forcing bright white background colors on autofilled credentials fields?*
 3.  *How do you guarantee that all text colors on Conclave's dark layouts meet WCAG AA contrast requirements?*
 
