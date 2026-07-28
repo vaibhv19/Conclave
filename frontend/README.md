@@ -53,3 +53,17 @@ Global client states are managed via lightweight stores inside `src/store/`:
 - **Test Directory:** Tests are written inside `frontend/e2e/conclave.spec.js`.
 - **API Mocking:** Utilizes Playwright `page.route` to mock registration, login, and room spec queries. This ensures that the test runner executes fast and has no dependencies on active database records.
 - **Vite Autolaunch:** The configuration (`playwright.config.js`) is configured with a `webServer` block that automatically spins up the Vite server on port `5173` if it's not already running.
+
+---
+
+## 🎨 Premium Level-Based Design System
+
+The visual design is structured as a premium, low-contrast desktop engineering console with the following surface levels:
+- **Level 0 (Main Canvas)**: Deep Slate Charcoal `#08080A` (used for main page backgrounds)
+- **Level 1 (Side Panels)**: Dark Slate Surface `#121214` (used for sidebar container backgrounds and headers)
+- **Level 2 (Elevated Surfaces)**: Raised Slate `#18181C` (used for inputs, textareas, code blocks, and inactive list buttons)
+- **Level 3 (Interactive Active States)**: Active Surface `#222227` (used for active selection items and hovered elements)
+- **Borders**: Level 1 borders `#1F1F24`, Level 2 focus borders `#2E2E36`
+- **Typography**: Uses `Inter` for clean sans-serif UI labels and `JetBrains Mono` / `SF Mono` for telemetry outputs, metrics, and monospaced badges.
+- **Autofill Overrides**: Overrides native Chrome/Edge autofill styles to maintain dark, cohesive text input backgrounds.
+

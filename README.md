@@ -21,7 +21,7 @@ When building complex prompts or drafting documentation using LLMs, single-model
 | **Backend** | Spring Boot 3.3 / Java 21 | Leverages Java 21 Virtual Threads to handle concurrent, blocking LLM API calls without thread pool exhaustion. |
 | **Database** | PostgreSQL 16 | Relational consistency. Utilizes **Pessimistic Write Locks** (`select ... for update`) to prevent race conditions during pipeline pauses. |
 | **Real-time** | WebSockets (STOMP Protocol) | Provides structured, bidirectional pub/sub message routing for streaming AI tokens chunk-by-chunk. |
-| **Frontend** | React 19 / Vite / Tailwind CSS | Fast hot-module reloading. Tailwind provides "The Command Deck" visual theme for responsive grid adjustments. |
+| **Frontend** | React 19 / Vite / Tailwind CSS | Fast hot-module reloading. Uses custom Level 0 - Level 3 dark elevation panels with Inter and monospaced typography. |
 | **State** | Zustand | Lightweight state stores. Decouples WebSocket client stream callbacks from React re-render lifecycles. |
 | **Testing** | JUnit / Vitest / Playwright | End-to-end coverage spanning Java controller unit tests, React component tests, and browser E2E flows. |
 

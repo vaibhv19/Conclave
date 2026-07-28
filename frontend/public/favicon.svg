@@ -1,13 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#8b5cf6" />
-      <stop offset="100%" stop-color="#4f46e5" />
-    </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#8b5cf6" flood-opacity="0.5"/>
-    </filter>
-  </defs>
-  <rect x="5" y="5" width="90" height="90" rx="24" fill="url(#grad)" filter="url(#glow)" />
-  <text x="50%" y="67%" font-family="system-ui, -apple-system, sans-serif" font-size="52" font-weight="900" fill="#ffffff" text-anchor="middle">C</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" fill="none">
+  <circle cx="50" cy="50" r="42" stroke="#8B5CF6" stroke-width="3" stroke-dasharray="6 6" opacity="0.4" />
+  <path d="M50 8 C58 35 75 42 92 50 C75 58 58 65 50 92 C42 65 25 58 8 50 C25 42 42 35 50 8 Z" fill="#8B5CF6" />
+  <circle cx="50" cy="50" r="6" fill="#08080A" />
 </svg>

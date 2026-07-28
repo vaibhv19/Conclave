@@ -63,20 +63,24 @@ export default function SetupView() {
     };
 
     return (
-        <div className="min-h-screen bg-brand-bg text-zinc-100 flex flex-col font-sans select-none pb-16">
-            {/* Low-profile Operations Header */}
-            <header className="border-b border-brand-border bg-brand-card sticky top-0 z-50">
+        <div className="min-h-screen bg-brand-bg text-brand-textPrimary flex flex-col font-sans select-none pb-16">
+            {/* Minimal Desktop-style Header */}
+            <header className="border-b border-brand-border bg-brand-panel sticky top-0 z-50">
                 <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                        <div className="h-7 w-7 rounded bg-brand-accent flex items-center justify-center">
-                            <span className="font-mono font-black text-sm text-white">C</span>
-                        </div>
+                        {/* Branded Logo representation */}
+                        <svg className="h-6 w-6 text-brand-accent" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="2" strokeDasharray="3 3" className="opacity-30" />
+                            <path d="M50 8 C58 35 75 42 92 50 C75 58 58 65 50 92 C42 65 25 58 8 50 C25 42 42 35 50 8 Z" fill="currentColor" />
+                            <circle cx="50" cy="50" r="6" fill="#121214" />
+                        </svg>
+
                         <div className="flex items-baseline space-x-2">
                             <span className="font-mono text-xs font-bold uppercase tracking-wider text-white">
                                 CONCLAVE
                             </span>
                             <span className="text-[10px] text-brand-textMuted font-mono uppercase tracking-widest">
-                                / workspace-initializer
+                                / initializer
                             </span>
                         </div>
                     </div>
@@ -87,7 +91,7 @@ export default function SetupView() {
                         </span>
                         <button
                             onClick={logout}
-                            className="text-[10px] font-mono font-bold uppercase tracking-wider py-1 px-2.5 rounded bg-brand-surface border border-brand-border hover:bg-zinc-800 transition-colors focus:outline-none"
+                            className="text-[10px] font-mono font-bold uppercase tracking-wider py-1.5 px-2.5 rounded bg-brand-surface border border-brand-border hover:bg-zinc-800 transition-colors focus:outline-none"
                         >
                             Sign Out
                         </button>
@@ -108,7 +112,7 @@ export default function SetupView() {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {error && (
-                        <div className="bg-red-950/20 border border-red-900/40 text-red-400 px-4 py-2.5 rounded-lg text-xs relative flex items-center justify-between font-mono">
+                        <div className="bg-red-950/20 border border-red-900/40 text-red-400 px-4 py-2.5 rounded text-xs relative flex items-center justify-between font-mono">
                             <span>{error}</span>
                             <button
                                 type="button"
@@ -122,7 +126,7 @@ export default function SetupView() {
                     )}
 
                     {/* Room Specification Panel */}
-                    <div className="bg-brand-card border border-brand-border rounded-xl p-6 space-y-5">
+                    <div className="bg-brand-panel border border-brand-border rounded-xl p-6 space-y-5">
                         <div className="flex items-center space-x-2 border-b border-brand-border pb-3">
                             <span className="text-xs text-brand-accent font-mono">01 //</span>
                             <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">
@@ -131,7 +135,7 @@ export default function SetupView() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-brand-textMuted">
+                            <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted">
                                 WORKSPACE TITLE
                             </label>
                             <input
@@ -141,12 +145,12 @@ export default function SetupView() {
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder="e.g. Slogan Draft Campaign"
-                                className="w-full px-3 py-2 text-xs rounded-lg bg-brand-surface border border-brand-border text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-brand-borderLight transition-colors font-mono"
+                                className="w-full px-3 py-2 text-xs rounded bg-brand-surface border border-brand-border text-brand-textPrimary placeholder-zinc-700 focus:outline-none focus:border-brand-borderLight transition-colors font-mono"
                             />
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-brand-textMuted">
+                            <label className="block text-[9px] font-mono font-bold uppercase tracking-widest text-brand-textMuted">
                                 PROJECT OBJECTIVE
                             </label>
                             <textarea
@@ -156,13 +160,13 @@ export default function SetupView() {
                                 value={objective}
                                 onChange={(e) => setObjective(e.target.value)}
                                 placeholder="State the objective that the models will collaborate to draft and review..."
-                                className="w-full px-3 py-2 text-xs rounded-lg bg-brand-surface border border-brand-border text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-brand-borderLight transition-colors resize-none font-sans"
+                                className="w-full px-3 py-2 text-xs rounded bg-brand-surface border border-brand-border text-brand-textPrimary placeholder-zinc-700 focus:outline-none focus:border-brand-borderLight transition-colors resize-none font-sans"
                             />
                         </div>
                     </div>
 
                     {/* Role Assignments Panel */}
-                    <div className="bg-brand-card border border-brand-border rounded-xl p-6 space-y-5">
+                    <div className="bg-brand-panel border border-brand-border rounded-xl p-6 space-y-5">
                         <div className="flex items-center justify-between border-b border-brand-border pb-3">
                             <div className="flex items-center space-x-2">
                                 <span className="text-xs text-brand-accent font-mono">02 //</span>
@@ -174,7 +178,7 @@ export default function SetupView() {
                                 type="button"
                                 onClick={handleAddRole}
                                 disabled={loading}
-                                className="text-[10px] font-mono font-bold uppercase tracking-wider bg-brand-surface border border-brand-border text-zinc-300 py-1 px-2.5 rounded hover:bg-zinc-800 transition-colors focus:outline-none"
+                                className="text-[9px] font-mono font-bold uppercase tracking-wider bg-brand-surface border border-brand-border text-zinc-350 py-1 px-2.5 rounded hover:bg-zinc-800 transition-colors focus:outline-none"
                             >
                                 + Add Agent Role
                             </button>
@@ -195,7 +199,7 @@ export default function SetupView() {
                                             value={role.roleName}
                                             onChange={(e) => handleRoleChange(index, 'roleName', e.target.value.replace(/[^a-zA-Z0-9_-]/g, ''))}
                                             placeholder="e.g. Copywriter"
-                                            className="w-full px-2.5 py-1.5 rounded bg-brand-surface border border-brand-border text-zinc-200 placeholder-zinc-700 focus:outline-none focus:border-brand-borderLight text-xs transition-colors font-mono"
+                                            className="w-full px-2.5 py-1.5 rounded bg-brand-surface border border-brand-border text-brand-textPrimary placeholder-zinc-700 focus:outline-none focus:border-brand-borderLight text-xs transition-colors font-mono"
                                         />
                                     </div>
 
@@ -208,10 +212,10 @@ export default function SetupView() {
                                             value={role.modelId}
                                             disabled={loading}
                                             onChange={(e) => handleRoleChange(index, 'modelId', e.target.value)}
-                                            className="w-full px-2.5 py-1.5 rounded bg-brand-surface border border-brand-border text-zinc-300 focus:outline-none focus:border-brand-borderLight text-xs transition-colors font-mono"
+                                            className="w-full px-2.5 py-1.5 rounded bg-brand-surface border border-brand-border text-brand-textSecondary focus:outline-none focus:border-brand-borderLight text-xs transition-colors font-mono"
                                         >
                                             {MODEL_OPTIONS.map(opt => (
-                                                <option key={opt.value} value={opt.value} className="bg-brand-bg text-zinc-300">
+                                                <option key={opt.value} value={opt.value} className="bg-brand-bg text-brand-textSecondary">
                                                     {opt.label}
                                                 </option>
                                             ))}
@@ -248,7 +252,7 @@ export default function SetupView() {
                                                 type="button"
                                                 onClick={() => handleRemoveRole(index)}
                                                 disabled={loading}
-                                                className="text-[10px] font-mono font-bold uppercase tracking-wider text-red-500 hover:text-red-400 transition-colors p-1"
+                                                className="text-[9px] font-mono font-bold uppercase tracking-wider text-red-500 hover:text-red-400 transition-colors p-1"
                                             >
                                                 [Remove]
                                             </button>
@@ -263,7 +267,7 @@ export default function SetupView() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-2.5 rounded-lg bg-brand-accent hover:bg-brand-accentHover font-semibold text-xs text-white transition-colors duration-150 flex items-center justify-center focus:outline-none focus:ring-1 focus:ring-brand-accent/50"
+                        className="w-full py-2.5 rounded bg-brand-accent hover:bg-brand-accentHover font-mono font-bold uppercase tracking-wider text-xs text-white transition-colors flex items-center justify-center focus:outline-none"
                     >
                         {loading ? (
                             <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
