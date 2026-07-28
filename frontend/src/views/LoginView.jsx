@@ -123,7 +123,7 @@ export default function LoginView({ onSwitchView }) {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="you@example.com"
-                                className="w-full px-3 py-2 text-xs rounded bg-brand-surface border border-brand-border text-brand-textPrimary placeholder-zinc-700 hover:border-zinc-800 focus:outline-none focus:border-brand-borderLight focus:ring-1 focus:ring-brand-borderLight disabled:opacity-40 disabled:cursor-not-allowed transition-all font-mono"
+                                className="conclave-input"
                             />
                         </div>
 
@@ -141,7 +141,7 @@ export default function LoginView({ onSwitchView }) {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className="w-full px-3 py-2 text-xs rounded bg-brand-surface border border-brand-border text-brand-textPrimary placeholder-zinc-700 hover:border-zinc-800 focus:outline-none focus:border-brand-borderLight focus:ring-1 focus:ring-brand-borderLight disabled:opacity-40 disabled:cursor-not-allowed transition-all font-mono"
+                                className="conclave-input"
                             />
                         </div>
 

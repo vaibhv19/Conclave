@@ -146,10 +146,8 @@ export default function ChatBar({ onSubmit, roleAssignments = [], isPaused = fal
                             : "Type a prompt (type '@' to select role)..."
                     }
                     rows={2}
-                    className={`w-full px-3 py-2.5 rounded-lg bg-brand-bg border text-zinc-100 placeholder-zinc-700 focus:outline-none text-xs transition-colors resize-none font-mono ${
-                        isPaused 
-                            ? 'border-amber-600/30 focus:border-amber-600' 
-                            : 'border-brand-border focus:border-brand-borderLight'
+                    className={`conclave-input resize-none ${
+                        isPaused ? 'conclave-input-warning' : ''
                     }`}
                 />
             </div>
