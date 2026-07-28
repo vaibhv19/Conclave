@@ -144,7 +144,7 @@ export default function SetupView() {
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder="e.g. Slogan Draft Campaign"
-                                className="w-full px-3 py-2 text-xs rounded bg-brand-surface border border-brand-border text-brand-textPrimary placeholder-zinc-700 focus:outline-none focus:border-brand-borderLight transition-colors font-mono"
+                                className="conclave-input"
                             />
                         </div>
 
@@ -159,7 +159,7 @@ export default function SetupView() {
                                 value={objective}
                                 onChange={(e) => setObjective(e.target.value)}
                                 placeholder="State the objective that the models will collaborate to draft and review..."
-                                className="w-full px-3 py-2 text-xs rounded bg-brand-surface border border-brand-border text-brand-textPrimary placeholder-zinc-700 focus:outline-none focus:border-brand-borderLight transition-colors resize-none font-sans"
+                                className="conclave-input"
                             />
                         </div>
                     </div>
@@ -198,7 +198,7 @@ export default function SetupView() {
                                             value={role.roleName}
                                             onChange={(e) => handleRoleChange(index, 'roleName', e.target.value.replace(/[^a-zA-Z0-9_-]/g, ''))}
                                             placeholder="e.g. Copywriter"
-                                            className="w-full px-2.5 py-1.5 rounded bg-brand-surface border border-brand-border text-brand-textPrimary placeholder-zinc-700 focus:outline-none focus:border-brand-borderLight text-xs transition-colors font-mono"
+                                            className="conclave-input"
                                         />
                                     </div>
 
@@ -211,7 +211,7 @@ export default function SetupView() {
                                             value={role.modelId}
                                             disabled={loading}
                                             onChange={(e) => handleRoleChange(index, 'modelId', e.target.value)}
-                                            className="w-full px-2.5 py-1.5 rounded bg-brand-surface border border-brand-border text-brand-textSecondary focus:outline-none focus:border-brand-borderLight text-xs transition-colors font-mono"
+                                            className="conclave-input"
                                         >
                                             {MODEL_OPTIONS.map(opt => (
                                                 <option key={opt.value} value={opt.value} className="bg-brand-bg text-brand-textSecondary">
