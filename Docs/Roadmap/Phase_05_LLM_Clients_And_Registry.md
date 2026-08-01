@@ -3,109 +3,102 @@
 ## 1. Module Planning: LLM Clients & Model Registry
 
 ### 1.1 Purpose
-The purpose of this phase is to configure the Spring AI integrations. This includes setting up the live Google Vertex AI client bean, implementing two custom `FakeChatClient` beans simulating OpenAI GPT and Anthropic Claude, and creating the `ModelRegistry` service to dynamically resolve the correct model bean at runtime based on active room mappings.
+The purpose of this phase is to configure the Spring AI Ollama integration. This includes setting up the connection to the local Ollama daemon (by default on port `11434`), creating configured client beans for our local models (`llama3`, `mistral`, `gemma`), and building the `ModelRegistry` service to dynamically resolve the target model bean at runtime based on active room mappings. Every client call runs real local inference.
 
 ### 1.2 Package / Folder Structure
 ```
 backend/src/main/java/com/conclave/
 ├── config/
-│   └── SpringAiConfig.java            # Configures Gemini Vertex AI & Fake Clients
+│   └── OllamaConfig.java            # Configures local Ollama connections and options
 └── integration/
-    ├── registry/
-    │   └── ModelRegistry.java          # Runtime bean resolver
-    └── client/
-        ├── FakeOpenAiChatClient.java   # Fake ChatClient simulating GPT
-        └── FakeClaudeChatClient.java   # Fake ChatClient simulating Claude
+    └── registry/
+        └── ModelRegistry.java          # Runtime model resolver interface
+        └── ModelRegistryImpl.java      # Runtime model resolver implementation
 ```
 
 ### 1.3 Responsibilities & Dependencies
-- **Spring AI Abstraction:** All client implementations must satisfy Spring AI's standard `ChatClient` interface. This enforces design consistency and allows fake-to-live profile swapping without core code modifications.
-- **Model Registry:** Maps standard `ModelId` identifiers (`GEMINI_PRO`, `FAKE_OPENAI`, `FAKE_CLAUDE`) to the registered `ChatClient` beans.
-- **Latency & Stutter Simulation:** To align with the unified frontend design:
-  - Fakes must simulate network lag using `Thread.sleep` or reactor delays (1s to 3s).
-  - Fakes must support simulated streaming by chunking their stubbed responses with brief delays (e.g., 50ms per word chunk).
-- **Token Estimation Heuristic:** Fakes must calculate simulated usage: input tokens = query characters / 4; output tokens = response characters / 4.
+- **Spring AI Abstraction:** All client implementations must satisfy Spring AI's standard `ChatModel`/`ChatClient` interfaces. This enforces design consistency and allows model swaps without core code modifications.
+- **Model Registry:** Maps standard `ModelId` identifiers (`llama3`, `mistral`, `gemma`) to the configured `OllamaChatModel` beans.
+- **Real Token Usage Metrics:** Local models report actual prompt and completion tokens in their response metadata. The registry and orchestrator parse these values directly from Spring AI's response models, removing the need for character-count heuristic estimates.
+- **Real Generation Latency:** We perform real local inference, so generation latency is naturally handled by virtual threads during streaming.
 
 ---
 
-## 2. Module Components
+## 2. Predefined Model Configurations
 
-### 2.1 Predefined Model Configurations
-- **`GEMINI_PRO`**: Real connection via `VertexAiChatClient`. Requires `SPRING_AI_VERTEX_AI_GEMINI_API_KEY` injected from `.env.local`.
-- **`FAKE_OPENAI`**: Wired via `FakeOpenAiChatClient`. Returns mock Markdown text (structured as analytical reviews).
-- **`FAKE_CLAUDE`**: Wired via `FakeClaudeChatClient`. Returns mock Markdown text (structured as code critique comments).
+All local models are accessed via the local Ollama server configured in `application.yml` (default endpoint: `http://localhost:11434`).
+*   **`llama3`**: Connection via `OllamaChatModel` with model parameter set to `"llama3"`.
+*   **`mistral`**: Connection via `OllamaChatModel` with model parameter set to `"mistral"`.
+*   **`gemma`**: Connection via `OllamaChatModel` with model parameter set to `"gemma"`.
 
-### 2.2 Dynamic Resolution Interface
+---
+
+## 3. Dynamic Resolution Interface
+
 ```java
 package com.conclave.integration.registry;
 
-import org.springframework.ai.chat.client.ChatClient;
-import java.util.Map;
+import org.springframework.ai.chat.model.ChatModel;
 
 public interface ModelRegistry {
     /**
-     * Retrieves the ChatClient bean associated with the given model ID.
+     * Retrieves the ChatModel bean associated with the given model ID.
      * Throws IllegalArgumentException if the modelId is unsupported.
      */
-    ChatClient getClient(String modelId);
+    ChatModel getClient(String modelId);
 }
 ```
 
 ---
 
-## 3. Atomic Implementation Tasks
+## 4. Atomic Implementation Tasks
 
-### Task 5.1: Define Supported Models and Setup Spring AI configurations
+### Task 5.1: Setup Spring AI Ollama configurations in application.yml
 - **Estimated Size:** S
 - **Risk:** Low
 - **Prerequisites:** Phase 01 Setup
 - **Definition of Done:**
-  - Create standard `ModelId` Enum with options: `GEMINI_PRO`, `FAKE_OPENAI`, `FAKE_CLAUDE`.
-  - Spring AI Vertex AI dependency verified in classpath.
-  - `SpringAiConfig.java` bootstraps connection details. Verify environment key fallback to prevent crash when key is missing in test execution profiles.
+  - Standard `ModelId` Enum with options: `llama3`, `mistral`, `gemma`.
+  - Spring AI Ollama dependencies configured in `pom.xml`.
+  - `OllamaConfig.java` bootstrap properties verify local host connection.
 
-### Task 5.2: Develop FakeOpenAiChatClient and FakeClaudeChatClient
+### Task 5.2: Configure OllamaChatModel Beans
 - **Estimated Size:** M
 - **Risk:** Medium
 - **Prerequisites:** Task 5.1
 - **Definition of Done:**
-  - Create `FakeOpenAiChatClient.java` implementing standard Spring AI `ChatClient` method contracts.
-  - Implement streaming methods (e.g. returning `Flux<ChatResponse>`) that split dummy review text into chunks separated by 50ms thread pauses to simulate real-time API output.
-  - Implement non-streaming methods simulating a 1.5s total latency.
-  - Create `FakeClaudeChatClient.java` using the same patterns but returning mock developer critique templates.
-  - Add unit tests verifying mock responses and token usage calculations.
+  - Create beans in `OllamaConfig.java` for the individual local models, wrapping `OllamaChatModel` with custom parameters (e.g. temperature, system prompts, context-window sizes).
+  - Add unit tests verifying prompt generation and parsing of real token usage metadata.
 
 ### Task 5.3: Implement the ModelRegistry Lookup Service
 - **Estimated Size:** S
 - **Risk:** Low
 - **Prerequisites:** Task 5.2
 - **Definition of Done:**
-  - Create `ModelRegistryImpl.java` annotated with `@Service`.
-  - Inject the three ChatClient beans (Gemini, FakeOpenAI, FakeClaude) and index them in a private final `Map<String, ChatClient>`.
+  - Create `ModelRegistryImpl.java` implementing `ModelRegistry`.
+  - Inject the Ollama ChatModel beans and index them in a private final `Map<String, ChatModel>`.
   - Implement `getClient(String modelId)` with error checks for unsupported names.
   - Unit tests verify registry resolves each modelId to its exact expected bean class.
 
 ---
 
-## 4. Documentation & Verification
+## 5. Documentation & Verification
 
 ### Documentation to Update / Create
-- Create `Docs/Learning/04_Model_Registry_And_Fake_ChatClients.md` documenting:
-  - The design defense for using fakes instead of network mocking (WireMock).
-  - Simulated latency values, token calculation rules, and instructions on how to switch fakes to live API configurations in the future.
+- Create `Docs/Learning/04_Model_Registry_And_Ollama_Clients.md` documenting:
+  - Configuration instructions for running Ollama and downloading the required models locally.
+  - Performance, hardware constraints, VRAM allocation, and template options for local multi-model workspaces.
 
 ### Testing Checkpoint
 - Perform registry integration verification: verify that calling registry resolver retrieves active beans.
-- Verify that booting the application with no API Key successfully registers fake client beans and boots the backend without crashing.
+- Verify that booting the application with a running Ollama daemon successfully initializes all model beans.
 
 ### Suggested Git Commit Boundaries
-1. `config: define ModelId structures and Spring AI Vertex properties`
-2. `integration: implement FakeOpenAiChatClient with streaming simulation`
-3. `integration: implement FakeClaudeChatClient with streaming simulation`
-4. `integration: implement ModelRegistry mapping lookups`
+1. `config: configure Spring AI Ollama properties`
+2. `config: define OllamaChatModel beans in OllamaConfig`
+3. `integration: implement ModelRegistry mapping lookups`
 
 ### Suggested GitHub Issues
-- **Issue 5.1:** Setup spring AI property profiles and model mappings. (Points: 1)
-- **Issue 5.2:** Build Fake ChatClient wrappers for simulated OpenAI logic. (Points: 2)
-- **Issue 5.3:** Build Fake ChatClient wrappers for simulated Claude logic. (Points: 2)
-- **Issue 5.4:** Create ModelRegistry bean router service. (Points: 1)
+- **Issue 5.1:** Setup spring AI Ollama property configuration. (Points: 1)
+- **Issue 5.2:** Configure OllamaChatModel beans. (Points: 2)
+- **Issue 5.3:** Create ModelRegistry bean router service. (Points: 1)
