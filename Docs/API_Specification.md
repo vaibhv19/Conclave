@@ -38,7 +38,7 @@ sequenceDiagram
     participant Orch as MessageOrchestratorImpl
     participant DB as PostgreSQL (JPA)
     participant WS as SimpMessagingTemplate
-    participant LLM as External Gemini / Mock LLM
+    participant LLM as Local Ollama Server
 
     Client->>Filter: POST /api/chat/message (Headers: Authorization + Body: ChatMessageRequest)
     Note over Filter: 1. Extract Bearer token<br/>2. Verify signature & expiration<br/>3. Inject UserPrincipal to SecurityContext
@@ -66,7 +66,7 @@ sequenceDiagram
     
     Orch->>WS: 8. Broadcast TURN_STARTED via STOMP
     
-    Orch->>LLM: 9. Invoke Model (Gemini stream OR Fake Latency stream)
+    Orch->>LLM: 9. Invoke local model (Ollama stream)
     loop Stream Output
         LLM-->>Orch: Text Fragment
         Orch->>WS: 10. Broadcast CONTENT_CHUNK event
@@ -149,12 +149,12 @@ Creates a new collaborative session.
       "roleAssignments": [
         {
           "roleName": "LeadWriter",
-          "modelId": "GEMINI_PRO",
+          "modelId": "llama3",
           "uiColorHex": "#8B5CF6"
         },
         {
           "roleName": "Critic",
-          "modelId": "FAKE_CLAUDE",
+          "modelId": "mistral",
           "uiColorHex": "#EAB308"
         }
       ],
@@ -171,12 +171,12 @@ Creates a new collaborative session.
       "roleAssignments": [
         {
           "roleName": "LeadWriter",
-          "modelId": "GEMINI_PRO",
+          "modelId": "llama3",
           "uiColorHex": "#8B5CF6"
         },
         {
           "roleName": "Critic",
-          "modelId": "FAKE_CLAUDE",
+          "modelId": "mistral",
           "uiColorHex": "#EAB308"
         }
       ],
@@ -245,7 +245,7 @@ Fetches the canonical history list for the workspace.
         "messageId": "bd382c1e-3fdf-441c-b29e-445a16df3323",
         "senderType": "AI",
         "roleName": "LeadWriter",
-        "modelId": "GEMINI_PRO",
+        "modelId": "llama3",
         "content": "Here is the structure for `POST /api/checkout`...",
         "timestamp": "2026-07-28T10:46:02.122",
         "isMocked": false
@@ -300,8 +300,8 @@ Broadcast immediately when a model is selected and execution begins:
 {
   "type": "TURN_STARTED",
   "roleName": "Critic",
-  "modelId": "FAKE_CLAUDE",
-  "isMocked": true
+  "modelId": "mistral",
+  "isMocked": false
 }
 ```
 
