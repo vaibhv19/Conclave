@@ -2,9 +2,9 @@
 
 ## 1. Problem Statement
 In multi-agent collaborative workflows:
-*   **Context Window Saturation:** As message histories grow, sending the entire transcript to multiple models runs into provider context limits.
-*   **Escalating Token Costs:** Large transcripts increase token consumption, leading to high usage costs.
-*   **Information Decay:** Over long transcripts, models can lose focus on primary objectives, drifting away from tasks.
+*   **VRAM and Local Resource Exhaustion:** As message histories grow, sending large prompts to local models increases GPU VRAM consumption. If context bounds are exceeded, the local server can trigger out-of-memory (OOM) errors, crashing the Ollama service or system.
+*   **Prompt Processing Latency:** Local models must process the entire history context for each turn. Larger prompts dramatically increase prompt processing time (pre-fill phase), causing noticeable lag and UI stuttering.
+*   **Context Window Saturation:** Local open-source models often have smaller default context windows (e.g., 2,048 to 8,192 tokens) than massive cloud-based APIs. Sending raw transcripts quickly saturates these limits, causing models to ignore older context or degrade in reasoning quality.
 
 ---
 
@@ -16,7 +16,7 @@ Rather than sending full transcripts, Conclave maintains a consolidated state su
 ## 3. Architecture Decision
 We implemented a **Context Janitor Pattern** managed by `WorkflowStateServiceImpl`:
 *   When history in a room exceeds **10 messages**, a background compression job is triggered.
-*   The service formats the history, compiles a system prompt for the `Conclave Janitor`, and calls Google Gemini Pro to summarize progress into a strict JSON payload.
+*   The service formats the history, compiles a system prompt for the `Conclave Janitor`, and calls a local model (e.g. `llama3`) via Ollama to summarize progress into a strict JSON payload.
 *   The database updates the `workflow_state` table and purges middle history messages, retaining only the system prompt (index 0) and the last two turns.
 
 ---
@@ -28,8 +28,8 @@ We implemented a **Context Janitor Pattern** managed by `WorkflowStateServiceImp
 ---
 
 ## 5. Trade-offs
-*   **Pros:** Keeps token usage low, preserves historical draft changes, and maintains short-term conversational context.
-*   **Cons:** Summarization calls introduce minor API latency and run the risk of losing small details during compaction.
+*   **Pros:** Keeps VRAM usage low, reduces prompt processing latency, preserves historical draft changes, and maintains short-term conversational context.
+*   **Cons:** Summarization calls introduce minor local execution latency and run the risk of losing small details during compaction.
 
 ---
 
@@ -51,8 +51,8 @@ The following code snippet from `WorkflowStateServiceImpl.java` shows the parsin
 // WorkflowStateServiceImpl.java
 if (history.size() <= 10) return;
 
-// Invoke Gemini summarizer...
-String responseText = geminiClient.prompt().user(summarizerPrompt).call().content();
+// Invoke local summarizer model...
+String responseText = ollamaChatModel.prompt().user(summarizerPrompt).call().content();
 
 // Parse and update state
 updateStateFromResponse(state, responseText);
@@ -82,8 +82,8 @@ messageRepository.deleteAll(toDelete);
 graph TD
     Service[WorkflowStateServiceImpl] -->|1. Reads History| DB[(PostgreSQL)]
     Service -->|2. Formats Prompt| Service
-    Service -->|3. Calls Summarizer| Gemini[Gemini Pro API]
-    Gemini -->|4. Returns JSON| Service
+    Service -->|3. Calls Summarizer| Ollama[Local Ollama Model]
+    Ollama -->|4. Returns JSON| Service
     Service -->|5. Parses JSON| Parser[JSON Sanitization Filter]
     Parser -->|6. Updates Summary| DB
     Service -->|7. Purges Middle Messages| DB
@@ -95,7 +95,7 @@ sequenceDiagram
     autonumber
     participant Orch as MessageOrchestratorImpl
     participant Service as WorkflowStateServiceImpl
-    participant Gemini as Gemini Pro API
+    participant Ollama as Local Ollama Model
     participant DB as PostgreSQL
 
     Orch->>Service: evaluateAndCompressHistory(roomId)
@@ -103,9 +103,9 @@ sequenceDiagram
     DB-->>Service: Return count (e.g., 12 messages)
     
     rect rgb(25, 25, 30)
-        Note over Service, Gemini: Janitor Summarization Loop
-        Service->>Gemini: Invoke summarizer prompt (Transcript details)
-        Gemini-->>Service: Return JSON block (currentDraft, reviewComments)
+        Note over Service, Ollama: Janitor Summarization Loop
+        Service->>Ollama: Invoke summarizer prompt (Transcript details)
+        Ollama-->>Service: Return JSON block (currentDraft, reviewComments)
     end
     
     Service->>Service: Sanitize JSON block & strip markdown markers
@@ -119,7 +119,7 @@ sequenceDiagram
 ## 10. Common Bugs & Debug Checklist
 
 *   **Bug 1: JSON Parsing Exception (Malformed Summaries)**
-    *   *Cause:* Gemini includes markdown blocks (` ```json ` or ` ``` `) or conversational filler text in the response, causing Jackson parser to throw exceptions.
+    *   *Cause:* The local model includes markdown blocks (` ```json ` or ` ``` `) or conversational filler text in the response, causing Jackson parser to throw exceptions.
     *   *Checklist:*
         1. Review log output in `WorkflowStateServiceImpl`.
         2. Ensure the JSON sanitization logic strips out markdown markers (`indexOf("```json")`) before parsing.
@@ -142,14 +142,14 @@ sequenceDiagram
 
 ## 12. Mock Interview Questions & Sample Answers
 
-### Q1: How does your context compression algorithm prevent database bloat and token saturation?
-*Sample Answer:* "We implement a Context Janitor pattern. When a room's history exceeds 10 messages, a background compression process compiles the history transcript and invokes Gemini to extract progress into a structured `WorkflowState` (draft and comments). Once saved, the database purges the middle messages (from index 1 to size-3), retaining only the first message (context foundation) and the last two turns (short-term memory). This keeps the database small, and ensures outgoing prompts contain condensed context summaries rather than bloated transcripts."
+### Q1: How does your context compression algorithm prevent database bloat and local model context saturation?
+*Sample Answer:* "We implement a Context Janitor pattern. When a room's history exceeds 10 messages, a background compression process compiles the history transcript and invokes a local model via Ollama to extract progress into a structured `WorkflowState` (draft and comments). Once saved, the database purges the middle messages (from index 1 to size-3), retaining only the first message (context foundation) and the last two turns (short-term memory). This prevents GPU VRAM exhaustion, keeps prompt processing times low, and ensures local models operate within their context windows."
 
-### Q2: What happens if the LLM summarizer returns malformed JSON that fails to parse?
+### Q2: What happens if the local model summarizer returns malformed JSON that fails to parse?
 *Sample Answer:* "If the summarizer output fails JSON parsing, we implement a graceful degradation fallback. The catch block intercepts the parsing exception, assigns the entire raw response string directly to `currentDraft`, and writes a warning message to the `reviewComments` field. The transaction is not rolled back, allowing the user to view the full draft output and manually resolve the formatting issue without losing data or crashing the workspace."
 
 ---
 
 ## 13. References
-*   [Google Generative AI JSON Output Specifications](https://ai.google.dev/gemini-api/docs/structured-output)
+*   [Ollama Options & Context Size Settings](https://github.com/ollama/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values)
 *   [Hibernate Cascading Deletes Guide](https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html#pc-cascade)
