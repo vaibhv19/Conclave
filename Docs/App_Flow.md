@@ -43,7 +43,7 @@ sequenceDiagram
     participant ChatCtrl as ChatController
     participant Orch as MessageOrchestratorImpl
     participant Reg as ModelRegistryImpl
-    participant Adap as ProviderAdapter (e.g., LlamaAdapter)
+    participant Adap as ModelAdapter (e.g., LlamaAdapter)
     participant ChatClt as OllamaChatModel
     participant WS as SimpMessagingTemplate
     participant DB as PostgreSQL
@@ -59,7 +59,7 @@ sequenceDiagram
     Orch->>Orch: Parse Mention (e.g., "@Writer")
     Orch->>Reg: getClient(modelId)
     Reg-->>Orch: Return OllamaChatModel Bean
-    Orch->>Adap: toProviderFormat(history, state)
+    Orch->>Adap: toModelFormat(history, state)
     Adap-->>Orch: Return Model Request Prompt
     
     Orch->>WS: Broadcast TURN_STARTED Event
@@ -73,7 +73,7 @@ sequenceDiagram
         end
     end
 
-    Orch->>Adap: fromProviderFormat(responsePayload)
+    Orch->>Adap: fromModelFormat(responsePayload)
     Adap-->>Orch: Return CanonicalMessage (AI)
     Orch->>DB: Save CanonicalMessage (AI) & TokenUsageLog
     Orch->>WS: Broadcast TURN_COMPLETED Event
@@ -83,7 +83,7 @@ sequenceDiagram
 2.  **Controller Injection:** `ChatController` intercepts the payload and invokes `MessageOrchestrator.processUserTurn`.
 3.  **User Message Saved:** The raw user input is saved as a `CanonicalMessage` with `sender_type = USER`.
 4.  **Mention Extraction:** `MentionParser` extracts the role name, looks up the assigned Model ID via `RoleAssignmentRepository`, and resolves the corresponding Spring AI `OllamaChatModel` from the `ModelRegistry`.
-5.  **Adapter Translation:** The `ProviderAdapter` implementation (e.g. `LlamaAdapter`) translates the canonical message history and the active `WorkflowState` into the exact prompt structure (including special chat templates and token structures) expected by the target local model.
+5.  **Adapter Translation:** The `ModelAdapter` implementation (e.g. `LlamaAdapter`) translates the canonical message history and the active `WorkflowState` into the exact prompt structure (including special chat templates and token structures) expected by the target local model.
 6.  **Real-Time Broadcasts:**
     *   Backend broadcasts a `TURN_STARTED` event over the WebSocket topic.
     *   For streaming, `OllamaChatModel.stream()` returns a reactive `Flux<ChatResponse>`. The server consumes this flux on a Virtual Thread, writing incoming fragments directly to the WebSocket via `CONTENT_CHUNK` events in real-time.

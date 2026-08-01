@@ -31,7 +31,7 @@ graph TB
         Janitor[WorkflowStateServiceImpl]
         
         Registry[ModelRegistryImpl]
-        Adapter[ProviderAdapter Layer]
+        Adapter[ModelAdapter Layer]
         
         Executor[AsyncTaskExecutor - Virtual Threads]
     end

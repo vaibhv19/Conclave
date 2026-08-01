@@ -64,14 +64,14 @@ A key architectural highlight of Conclave is its reliance on a locally-run Ollam
        [ CONCLAVE LOCAL OLLAMA SYSTEM ]
        MessageOrchestrator ---> ChatModel Bean (OllamaChatModel) ---> Real Local GPU/CPU Inference
                                       │
-                                      └──> Validates Adapter.toProviderFormat serialization (chat templates)
+                                      └──> Validates ModelAdapter.toModelFormat serialization (chat templates)
                                       └──> Submits request to http://localhost:11434
                                       └──> Streams real model output chunks in real-time
        * Benefits: Exercises actual model reasoning locally; 100% offline & secure; $0 cost.
 ```
 
 ### 3.1 Why Local Ollama Inference Wins in Engineering Reviews:
-1.  **Testing Chat Templates directly:** By mapping to local models, the backend runs the actual prompt-assembly code (`ProviderAdapter.toProviderFormat`) that injects the canonical message history and state into model-specific chat templates (e.g., Llama 3 tags vs. Gemma tokens). This verifies **prompt serialization and token structure** in Java code before execution.
+1.  **Testing Chat Templates directly:** By mapping to local models, the backend runs the actual prompt-assembly code (`ModelAdapter.toModelFormat`) that injects the canonical message history and state into model-specific chat templates (e.g., Llama 3 tags vs. Gemma tokens). This verifies **prompt serialization and token structure** in Java code before execution.
 2.  **Real Latency and Performance Auditing:** Instead of fake delay loops, the system handles real model inference. Response chunks stream back based on local hardware capabilities, providing a high-fidelity representation of streaming speed, CPU/GPU loads, and memory bottlenecks.
 3.  **Local Data Isolation:** All conversations remain entirely within the local host (or private server). No data is sent to external AI providers, satisfying security rules for private development and eliminating any potential cloud billing costs.
 4.  **Flexible Model Selection:** Swapping models is done by configuration. By modifying the `modelId` (e.g., swapping `llama3` for `mistral`), the backend resolves the correct chat model and connects to Ollama, demonstrating a clean modular design.

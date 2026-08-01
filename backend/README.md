@@ -43,7 +43,7 @@ Run these wrapper scripts from the `backend/` directory:
 ./mvnw test
 ```
 The test suite includes:
-*   **Unit Tests:** Validates adapter translations (`GeminiAdapterTest`, `OpenAiAdapterTest`) and parser filters (`MentionParserTest`).
+*   **Unit Tests:** Validates adapter translations (`GemmaAdapterTest`, `LlamaAdapterTest`, `MistralAdapterTest`) and parser filters (`MentionParserTest`).
 *   **Integration Tests:** Verifies REST auth and sequential execution transactions (`AuthControllerIntegrationTest`, `PipelineSequentialIntegrationTest`).
 
 ### Run Local Development Server
@@ -67,7 +67,7 @@ The test suite includes:
 
 Study the following handbook chapters to understand the backend internals:
 *   **[JWT Security Filter Internals](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/02_JWT_Authentication_Strategy.md):** Detailed filter mappings and STOMP upgrade interceptors.
-*   **[Provider Adapter Mappings](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Provider_Adapter_Pattern.md):** Serializations and sequence checks.
-*   **[Model Bean Registry Specs](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/04_Model_Registry_And_Fake_ChatClients.md):** Dynamic mappings and mock latencies.
+*   **[Model Adapter Mappings](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Provider_Adapter_Pattern.md):** Serializations and sequence checks.
+*   **[Model Bean Registry Specs](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/04_Model_Registry_And_Ollama_Clients.md):** Dynamic mappings and Ollama model clients.
 *   **[History Compactor Janitor](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/05_Context_Compression_And_Janitor_Service.md):** Summarization prompts and purges.
 *   **[Pessimistic Locking Details](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/07_Pause_And_Intervene_Pipeline_Locking.md):** Database locking states and race prevention.

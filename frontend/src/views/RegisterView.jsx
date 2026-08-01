@@ -48,7 +48,7 @@ export default function RegisterView({ onSwitchView }) {
                             <span className="text-[10px] font-mono text-brand-accent mt-0.5">01 //</span>
                             <div>
                                 <h4 className="text-[10px] font-mono font-bold uppercase text-zinc-350 tracking-wider">Multi-Agent Pipelines</h4>
-                                <p className="text-[9px] text-brand-textMuted mt-0.5 leading-relaxed">Chain Google Gemini, OpenAI GPT, and Anthropic Claude in sequence.</p>
+                                <p className="text-[9px] text-brand-textMuted mt-0.5 leading-relaxed">Chain local Llama 3, Mistral, and Gemma models in sequence.</p>
                             </div>
                         </div>
                         <div className="flex items-start space-x-3">

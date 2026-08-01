@@ -21,7 +21,7 @@ To solve this, Conclave implements a **three-tiered testing strategy** combining
 ```
   ┌────────────────────────────────────────────────────────┐
   │              Unit Testing Tier (JUnit 5)               │
-  │  * Target: ProviderAdapter implementations             │
+  │  * Target: ModelAdapter implementations                │
   │  * Methods: Translates CanonicalMessage log to prompts │
   │  * Mocking: Mockito (no network calls, 100% stable)    │
   └───────────────────────────┬────────────────────────────┘

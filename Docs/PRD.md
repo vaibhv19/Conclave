@@ -60,7 +60,7 @@ During the design phase, several alternative architectural patterns were evaluat
 
 ### 4.1 Backend Orchestration (Spring Boot & Spring AI)
 *   **Unified Message Schema:** Persists conversation history in a single, normalized relational format (`CanonicalMessage`) that is provider-agnostic.
-*   **Provider Adapter Layer (`ProviderAdapter`):** A translation tier mapping the canonical history and task state into the exact chat templates expected by different local models (e.g., Llama 3's special tokens, Mistral's `[INST]` tags, Gemma's turn markers).
+*   **Model Adapter Layer (`ModelAdapter`):** A translation tier mapping the canonical history and task state into the exact chat templates expected by different local models (e.g., Llama 3's special tokens, Mistral's `[INST]` tags, Gemma's turn markers).
 *   **Dynamic Role Registry:** Resolves and injects the appropriate `OllamaChatModel` bean at runtime based on the assigned role of the target model.
 *   **Context Janitor (Compression Engine):** Automatically compresses context when history exceeds 10 messages by invoking a local model to summarize progress into `currentDraft` and `reviewComments`, and then purging middle messages while retaining the system prompt (foundation) and the last 2 messages (short-term memory).
 *   **Pessimistic State Locking:** Prevents race conditions during state transitions (`ACTIVE`, `PAUSED`) by applying pessimistic database locks (`SELECT ... FOR UPDATE`) on the `Room` entity.
@@ -95,14 +95,14 @@ During the design phase, several alternative architectural patterns were evaluat
 ## 7. Constraints & Limitations
 
 *   **Ollama Hardware & Resource Constraints:** Local VRAM and CPU/GPU performance dictate prompt processing times and active model context sizes. Running multiple large models concurrently may cause latency overhead or memory bottlenecks. <!-- TODO: Revisit during implementation -->
-*   **Model Chat Template Constraints:** Different local models require specific template formats (e.g. Llama 3 formatting vs. Gemma tags). Mismatched templates cause model drift. The `ProviderAdapter` implementations must handle and format this sequence, failing gracefully if violations occur.
+*   **Model Chat Template Constraints:** Different local models require specific template formats (e.g. Llama 3 formatting vs. Gemma tags). Mismatched templates cause model drift. The `ModelAdapter` implementations must handle and format this sequence, failing gracefully if violations occur.
 *   **Single-Threaded Sequential Pipelines:** Pipelines execute sequentially (Model A -> Model B). Parallel multi-model consensus loops are constrained in the current design.
 
 ---
 
 ## 8. Success Criteria & Metrics
 
-*   **Schema Translation Integrity:** 100% test coverage on `ProviderAdapter` classes verifying correct mappings (e.g., `CanonicalMessage` -> Llama/Mistral/Gemma prompts).
+*   **Schema Translation Integrity:** 100% test coverage on `ModelAdapter` classes verifying correct mappings (e.g., `CanonicalMessage` -> Llama/Mistral/Gemma prompts).
 *   **Real-time Delivery Rate:** STOMP socket message delivery rate must match chunk generation, streaming model outputs with no stuttering.
 *   **State Recovery:** A paused room must resume from the exact database state, preserving the summarized draft and memory logs.
 *   **Token Metrics Auditing:** Every turn logs a `TokenUsageLog` entry. Verification that Ollama token metrics are correctly aggregated by room and model.

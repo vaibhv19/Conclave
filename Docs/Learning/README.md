@@ -31,9 +31,8 @@ graph TB
         DB[(PostgreSQL 16)]
     end
 
-    subgraph "LLM Providers"
-        Gemini[Google Gemini API]
-        FakeClients[Fake ChatClient Beans]
+    subgraph "Local LLM Host"
+        Ollama[Ollama Daemon - Port 11434]
     end
 
     %% Flow links
@@ -47,8 +46,7 @@ graph TB
     Orchestrator -->|Acquire Lock| DB
     Orchestrator -->|Context Compression| Janitor
     
-    Registry -->|Live Call| Gemini
-    Registry -->|Simulated Call| FakeClients
+    Registry -->|Local Inference| Ollama
     
     Orchestrator -->|Push Chunks via STOMP| Stomp
     Stomp -->|Direct Update| Zustand
@@ -68,10 +66,10 @@ Click on the links below to study specific topics:
     *   Stateless REST security filters, WebSocket STOMP handshake interceptions, role verification, and signature debugging.
 
 ### Part B: Orchestration & AI Integration
-*   **[Chapter 03: Provider Adapter Pattern](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Provider_Adapter_Pattern.md)**
-    *   Mapping canonical DB message schemas to Gemini's alternating roles, Claude's top-level parameter configurations, and OpenAI's flat payloads.
-*   **[Chapter 04: Model Registry & Fake ChatClients](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/04_Model_Registry_And_Fake_ChatClients.md)**
-    *   Conditional registry mapping beans, stubbing OpenAI/Claude responses, simulating network latency on virtual threads, and test profiles.
+*   **[Chapter 03: Model Adapter Pattern](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Provider_Adapter_Pattern.md)**
+    *   Mapping canonical DB message schemas to Llama 3 special tokens, Mistral tag structures, and Gemma control token formats.
+*   **[Chapter 04: Model Registry & Ollama Clients](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/04_Model_Registry_And_Ollama_Clients.md)**
+    *   Dynamic registry resolving model identifiers to local Ollama client beans executing real inference on virtual threads.
 *   **[Chapter 05: Context Compression & Janitor Service](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/05_Context_Compression_And_Janitor_Service.md)**
     *   The `Conclave Janitor` history compression engine, JSON summarizer prompts, parsing recovery strategies, and database middle-message purging.
 

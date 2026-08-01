@@ -10,10 +10,10 @@ Conclave v1.0.0 is the first release of the **Multi-Provider AI Context Unificat
 
 ## 🚀 Key Features
 
-### 1. Multi-Provider Schema Translation (`ProviderAdapter`)
-*   Decoupled core database representation from specific vendor API models.
-*   Enforced boundary validations (e.g. alternating user/model roles in Gemini) at the Java layer.
-*   Implemented live GCP Vertex AI Gemini streaming and offline OpenAI/Claude stubs.
+### 1. Multi-Model Schema Translation (`ModelAdapter`)
+*   Decoupled core database representation from specific model template structures.
+*   Enforced boundary validations (e.g. Llama 3 special headers, Mistral bracket tags) at the Java layer.
+*   Implemented local Ollama inference execution (Llama 3, Mistral, Gemma).
 
 ### 2. WebSocket STOMP Real-Time Streams (`WebSocketConfig`)
 *   Configured STOMP pub/sub channels (`/topic/room/{roomId}`) for client sync.

@@ -37,7 +37,7 @@ Conclave defines a structured hierarchy of custom exceptions inheriting from a r
 *   **`ResourceNotFoundException` (404):** Thrown when a room, message, or user UUID is not found in the database.
 *   **`UnauthorizedAccessException` (403):** Thrown when a user attempts to access or mutate a room owned by another account.
 *   **`OrchestrationException` (400):** Thrown when workflow operations violate constraints (e.g., submitting messages to a paused room, sending messages with no role mention, or requesting unregistered model IDs).
-*   **`TranslationException` (400):** Thrown by `ProviderAdapter` implementations if serialization constraints or chat template validations are violated.
+*   **`TranslationException` (400):** Thrown by `ModelAdapter` implementations if serialization constraints or chat template validations are violated.
 *   **`EmailAlreadyExistsException` (409):** Thrown during registration if the user's email is already registered.
 *   **`InvalidMappingException` (400):** Thrown if role assignments map invalid parameters.
 

@@ -29,9 +29,9 @@ To preserve SOLID design and Clean Architecture principles, Conclave separates c
                            │
 +--------------------------▼----------------------------+
 |                   Integration / SPI                   |
-|        ProviderAdapter Layer & ChatClient Registry    |
+|        ModelAdapter Layer & Model Registry            |
 +--------------------------┬----------------------------+
-                           │ API Calls / Fakes
+                           │ Local Inference / Ollama
 +--------------------------▼----------------------------+
 |                  Infrastructure / DB                  |
 |             Spring Boot JPA + PostgreSQL              |
@@ -50,9 +50,9 @@ To preserve SOLID design and Clean Architecture principles, Conclave separates c
     - `MessageOrchestrator`: Multi-model sequential queue processing, role-to-model resolution, and token logging.
   - `controller/`: REST controllers (`AuthController`, `RoomController`, `ChatController`).
   - `websocket/`: STOMP event dispatchers and configuration.
-  - `integration/`: Provider-specific adapter packages:
-    - `adapter/`: Adapters for Gemini, OpenAI, and Claude.
-    - `client/`: Live `VertexAiChatClient` and `FakeChatClient` implementations.
+  - `integration/`: Model-specific adapter packages:
+    - `adapter/`: Adapters for Llama 3, Mistral, and Gemma.
+    - `registry/`: Dynamic registry and Ollama wrappers.
 - **`frontend/` (React SPA)**
   - `src/assets/`: Shared assets.
   - `src/components/`: Reusable components (Sidebar, MessageBubble, TurnIndicator, ChatBar, AlertBanner).
@@ -64,9 +64,9 @@ To preserve SOLID design and Clean Architecture principles, Conclave separates c
 ```
 CanonicalMessage DTO
          ↓
-ProviderAdapter Interface
+ModelAdapter Interface
          ↓
-GeminiAdapter (Live) & Fake Adapters (OpenAI / Claude)
+Llama, Mistral, Gemma Adapters (Ollama Local Inference)
          ↓
 ModelRegistry Service
          ↓
@@ -95,7 +95,7 @@ During analysis, the following structural discrepancies were found across docume
 2. **WebSocket Handshake Security:** REST routes are explicitly secured via JWT Bearer headers, but WebSocket endpoints have no specified authorization.
    - *Roadmap Resolution:* We incorporate STOMP connection frame interceptors that validate JWT tokens from headers.
 3. **Model Registry Predefined Models:** The role assignment links a custom role to a `modelId`, but there is no list of supported models.
-   - *Roadmap Resolution:* The roadmap specifies defining an enum of supported models (`ModelId`: `GEMINI_PRO`, `FAKE_OPENAI`, `FAKE_CLAUDE`) to prevent validation gaps.
+   - *Roadmap Resolution:* The roadmap specifies defining an enum of supported models (`ModelId`: `LLAMA3`, `MISTRAL`, `GEMMA`) to prevent validation gaps.
 
 ### Open Questions
 > [!WARNING]
@@ -114,7 +114,7 @@ The implementation is divided into **12 sequential, atomic development phases**.
 | **01** | [Project Setup & Infrastructure](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_01_Project_Setup.md) | Setup monorepo structure | Directory layouts, Maven/Vite configuration, Postgres Docker compose |
 | **02** | [Authentication & Domain](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_02_Authentication_And_Domain.md) | Schema design & REST auth | Database models, Spring JPA repositories, Spring Security JWT flow |
 | **03** | [Room Management API](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_03_Room_Management.md) | Setup space configuration | `Room` endpoints, role mappings validation, config persistence |
-| **04** | [Provider Adapter Layer](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_04_Provider_Adapter_Layer.md) | Context translation contracts | `ProviderAdapter` interfaces, Gemini/OpenAI/Claude payload translators |
+| **04** | [Model Adapter Layer](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_04_Model_Adapter_Layer.md) | Context translation contracts | `ModelAdapter` interfaces, Llama/Mistral/Gemma prompt templates |
 | **05** | [LLM Clients & Model Registry](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_05_LLM_Clients_And_Registry.md) | Vertex AI & Mock engines | Vertex AI binding, Fake chat clients with simulated latency, Registry |
 | **06** | [Orchestration & WorkflowState](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_06_Orchestration_And_WorkflowState.md) | Session orchestration | `MessageOrchestrator`, Gemini Janitor summarization, Token logs |
 | **07** | [WebSocket Real-time Layer](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_07_WebSocket_Realtime.md) | STOMP event broadcasting | Spring STOMP broker configuration, Event messages serialization |
@@ -160,13 +160,13 @@ gantt
 - **Intentionally Incomplete Work:** Conversation history is empty. Posting a message does not route to AI.
 
 ### Milestone 3: Adapter Verification (Phases 04 - 05)
-- **Completed Functionality:** Canonical messages translate seamlessly into Gemini formats and Fake OpenAI/Claude formats. Registry correctly returns matching Spring AI ChatClient beans.
-- **Demonstration Capability:** Executing JUnit test suites showing bidirectional serialization to/from Google Vertex structures, flat-array systems, and root-level Claude parameters.
+- **Completed Functionality:** Canonical messages translate seamlessly into Llama, Mistral, and Gemma formats. Registry correctly returns matching Spring AI ChatModel beans.
+- **Demonstration Capability:** Executing JUnit test suites showing bidirectional serialization to/from Llama, Mistral, and Gemma structures and templates.
 - **Testing Checkpoint:** Complete suite of adapter unit tests.
 - **Intentionally Incomplete Work:** No HTTP Chat endpoint, no live WebSockets.
 
 ### Milestone 4: Orchestrated Real-time Session Engine (Phases 06 - 08)
-- **Completed Functionality:** POST `/chat/message` routes mentions, runs ChatClients (including live Gemini Vertex calls & simulated fakes), processes token usage tracking, manages pipeline pause/resume, and broadcasts updates via STOMP WebSockets.
+- **Completed Functionality:** POST `/chat/message` routes mentions, runs ChatModels (using local Ollama inference), processes token usage tracking, manages pipeline pause/resume, and broadcasts updates via STOMP WebSockets.
 - **Demonstration Capability:** Trigger `/chat/message` via client/HTTP. Observe WebSocket connection receiving `TURN_STARTED`, `CONTENT_CHUNK` sequences, and `TURN_COMPLETED` containing updated `WorkflowState` summaries.
 - **Testing Checkpoint:** `MessageOrchestrationTests` and `JanitorStateTests` verifying DB purge on >10 messages.
 - **Intentionally Incomplete Work:** No user interface exists.
