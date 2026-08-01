@@ -1,21 +1,24 @@
-# Provider Adapter Strategy: Multi-Model Context Unification
+# Provider Adapter Strategy: Local Model Context Unification
 
-This document details the design rationales, vendor constraints, implementation structures, and extension guidelines for Conclave's **Provider Adapter Layer**. 
+This document details the design rationales, local model constraints, implementation structures, and extension guidelines for Conclave's **Provider Adapter Layer** when integrated with local **Ollama**-served models.
 
 ---
 
 ## 1. Architectural Context & Design Decision
 
 ### 1.1 The Problem
-No two Large Language Model (LLM) providers accept conversation history in the same format. For example:
-*   **Google Gemini** expects a strict alternating list of `user`/`model` roles and does not support native `system` role objects in its standard content array.
-*   **Anthropic Claude** requires the system instruction to be passed as a root-level property (`system`), with a separate alternating list of `user`/`assistant` messages.
-*   **OpenAI GPT** expects a flat list of `system`/`user`/`assistant` messages.
+No two Large Language Model (LLM) templates accept conversation history in the same format. When hosting models locally using **Ollama**, each model is fine-tuned to expect a specific chat template format to maintain performance and formatting:
+*   **Llama 3** expects a specific format with special tokens:
+    `<|start_header_id|>system<|end_header_id|>\n\n{system_prompt}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n{user_prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
+*   **Mistral** expects history wrapped in instruction tags:
+    `<s>[INST] {system_prompt}\n\n{user_prompt} [/INST] {assistant_response}</s>[INST] {next_user_prompt} [/INST]`
+*   **Gemma** uses control tokens:
+    `<start_of_turn>user\n{system_prompt}\n\n{user_prompt}<end_of_turn>\n<start_of_turn>model\n`
 
-If the application sends a raw conversation transcript to these endpoints, the APIs will fail validation, block requests, or lose context.
+Additionally, local environments are heavily constrained by **VRAM / RAM bounds** and have smaller default context windows (typically 2,048 to 8,192 tokens) compared to cloud-based APIs. Sending raw history or mismatched template tags causes model drift, garbage outputs, or VRAM Out-of-Memory (OOM) crashes.
 
 ### 1.2 The Decision
-Conclave implements a custom **Adapter Pattern** at the Java level. Rather than directly binding the database representation to any single provider, all messages are persisted in a single, provider-agnostic **Canonical Schema** (`CanonicalMessage`). Outgoing history is dynamically mapped to the target vendor's format at runtime, and incoming responses are normalized back.
+Conclave implements a custom **Adapter Pattern** at the Java level. Rather than directly binding the database representation to any single template format, all messages are persisted in a single, provider-agnostic **Canonical Schema** (`CanonicalMessage`). Outgoing history is dynamically mapped to the target local model's template format at runtime, and incoming response streams are normalized back. Every model roundtrip is a real inference call directed to the local Ollama API.
 
 ```
                   ┌───────────────────────────────┐
@@ -29,44 +32,45 @@ Conclave implements a custom **Adapter Pattern** at the Java level. Rather than 
                   └─┬─────────────┼─────────────┬─┘
                     │             │             │
         ┌───────────▼───┐ ┌───────▼───────┐ ┌───▼───────────┐
-        │ GeminiAdapter │ │ OpenAiAdapter │ │ ClaudeAdapter │
+        │ LlamaAdapter  │ │MistralAdapter │ │ GemmaAdapter  │
         └───────────────┘ └───────────────┘ └───────────────┘
 ```
 
 ### 1.3 Alternatives Considered & Trade-offs
-*   **Alternative 1: Direct Spring AI Client Abstractions:** Spring AI provides common wrappers. However, Spring AI's baseline `ChatClient` does not enforce provider-specific history rules (like Gemini's alternating check) at compile-time. Relying solely on Spring AI leads to runtime HTTP failures when history sequences drift.
-*   **Alternative 2: Client-side UI Payload Formatting:** Letting the React client format history. This was rejected because it leaks API structures to the client, increases payload sizes, and prevents backend orchestration and auditing.
-*   **The Verdict:** Custom `ProviderAdapter` implementations in Java isolate mapping logic. The business orchestrator only depends on the adapter interface, separating domain logic from vendor API changes.
+*   **Alternative 1: Raw Ollama API Default Formatting:** Ollama provides automatic formatting if you send messages via its `/api/chat` endpoint. However, this relies on Ollama's internal modelfiles, which can be inconsistent or strip custom system instructions when history size grows. A Java-level adapter gives us exact character-level control over prompt assembly.
+*   **Alternative 2: Client-side UI Template Generation:** Formatting the final prompt on the React client. This was rejected because it exposes formatting details to the UI, increases network payload sizes, and prevents backend orchestration (such as injecting system-level logs or evaluating history sizes for compression).
+*   **The Verdict:** Custom `ProviderAdapter` implementations in Java isolate the template mapping logic. The business orchestrator only depends on the adapter interface, allowing us to support new local models by simply adding their template rules.
 
 ---
 
 ## 2. Adapter Specification & Vendor Constraints
 
-### 2.1 Gemini Adapter (Live Integration)
-*   **API Schema Requirement:** Strictly alternating array of `user` and `model` messages.
-*   **System Prompt Constraint:** Gemini does not accept a `system` role within its standard chat `contents` array.
+### 2.1 Llama Adapter
+*   **Target Model:** `llama3` / `llama3.1` (or equivalent).
+*   **Chat Template Requirement:** Llama 3 special header tags and end-of-turn tokens (`<|start_header_id|>`, `<|end_header_id|>`, `<|eot_id|>`).
+*   **System Prompt Mapping:** Rendered inside `<|start_header_id|>system<|end_header_id|>`.
 *   **Mapping Rules:**
-    *   `CanonicalMessage(USER)` &rarr; `user`
-    *   `CanonicalMessage(AI)` &rarr; `model`
-    *   `CanonicalMessage(SYSTEM)` &rarr; Concatenated and prefixed to the first `user` turn content (e.g. `[System Objective]\n\n[User message]`).
-*   **Validation Check:** Enforces that the mapped list alternate roles, starting with `user`. Throws `TranslationException` if two consecutive user or model messages are detected.
+    *   `CanonicalMessage(USER)` &rarr; Wrap content in `user` header.
+    *   `CanonicalMessage(AI)` &rarr; Wrap content in `assistant` header.
+    *   `CanonicalMessage(SYSTEM)` &rarr; Concat with active `WorkflowState` details (objective, draft, comments) and wrap in `system` header.
+*   **Constraints:** <!-- TODO: Revisit during implementation --> Context limits must be strictly checked before assembly to prevent token overflow.
 
-### 2.2 OpenAI Adapter (Fake Integration)
-*   **API Schema Requirement:** Flat list of message objects containing `role` and `content`.
-*   **System Prompt Mapping:** Supported natively as a message with `role = "system"`.
+### 2.2 Mistral Adapter
+*   **Target Model:** `mistral` (or equivalent).
+*   **Chat Template Requirement:** `[INST]` and `[/INST]` tags.
+*   **System Prompt Mapping:** Since Mistral's basic chat template does not have a native separate system role tag, system instructions are prepended to the first `[INST]` instruction block.
 *   **Mapping Rules:**
-    *   `CanonicalMessage(USER)` &rarr; `user`
-    *   `CanonicalMessage(AI)` &rarr; `assistant`
-    *   `CanonicalMessage(SYSTEM)` &rarr; `system`
-*   **State Inclusion:** Renders the `WorkflowState` (objective, draft, comments) as the very first `system` instruction, ensuring the model is aligned before processing the history.
+    *   Prepend the system prompt and `WorkflowState` summary to the first user message.
+    *   `CanonicalMessage(USER)` &rarr; Enclose message in `[INST] ... [/INST]`.
+    *   `CanonicalMessage(AI)` &rarr; Output as plain text between instruction blocks.
 
-### 2.3 Claude Adapter (Fake Integration)
-*   **API Schema Requirement:** Root-level parameters for model configuration, with a clean alternating list of `user`/`assistant` messages.
-*   **System Prompt Constraint:** System instructions must be passed as a top-level property (`system`), not inside the message array.
+### 2.3 Gemma Adapter
+*   **Target Model:** `gemma` / `gemma2` (or equivalent).
+*   **Chat Template Requirement:** `<start_of_turn>` and `<end_of_turn>` tags with `user` and `model` role designations.
 *   **Mapping Rules:**
-    *   Extracts all `SYSTEM` messages and `WorkflowState` details.
-    *   Concatenates them into a single string passed in the root `system` field of the request.
-    *   Filters the `messages` list to contain only `user` and `assistant` messages, validating that they alternate.
+    *   `CanonicalMessage(SYSTEM)` &rarr; Concatenated with `WorkflowState` and placed inside `<start_of_turn>user` (or as a separate system turn if supported by the specific Gemma variation).
+    *   `CanonicalMessage(USER)` &rarr; `<start_of_turn>user\n{content}<end_of_turn>`
+    *   `CanonicalMessage(AI)` &rarr; `<start_of_turn>model\n{content}<end_of_turn>`
 
 ---
 
@@ -74,53 +78,54 @@ Conclave implements a custom **Adapter Pattern** at the Java level. Rather than 
 
 | Failure Mode | Trigger / Cause | System Impact | Recovery Strategy |
 | :--- | :--- | :--- | :--- |
-| **Alternating Role Violation** (`GeminiAdapter`) | User sends two consecutive messages without an intervening model response, or a model fails to reply. | Throws a validation `TranslationException`. | The orchestrator catches the exception, halts the turn, rolls back the transaction, and broadcasts a `SYSTEM_INTERVENTION` error event via WebSocket. |
-| **Janitor JSON Parsing Error** (`WorkflowStateServiceImpl`) | Gemini summarization outputs invalid JSON or includes markdown markdown indicators. | Fails to parse the updated draft/comments. | **Fallback:** Extracts raw text output, assigns it to `currentDraft`, logs the parsing exception to `reviewComments` for manual user resolution, and continues. |
-| **Missing Model Mapping** (`ModelRegistry`) | Mapped role requests an unregistered Model ID. | Throws `OrchestrationException` and halts turn. | UI alerts the user, blocks execution, and returns `400 Bad Request`. |
+| **Ollama Server Offline** | Local Ollama service is not running or port `11434` is blocked. | API throws `ConnectException`. Execution fails. | The orchestrator catches the connection error, halts the turn execution, rolls back the transaction, and broadcasts a `SYSTEM_INTERVENTION` event suggesting the user verify the Ollama service status. |
+| **Model Not Registered/Loaded** | The assigned `modelId` (e.g. `mistral`) is not downloaded in Ollama. | Ollama returns `404 Not Found`. | Backend catches the error, pauses the pipeline, and alerts the user to run `ollama pull <model>` on their server. |
+| **VRAM Out-of-Memory (OOM)** | Running multiple models concurrently exceeds GPU capacity. | Inference times out or Ollama process crashes. | The request times out. The orchestrator catches the timeout exception, releases pessimistic locks, sets room status to `PAUSED`, and broadcasts an optimization suggestion to the user interface. |
+| **Context Window Saturation** | Message history exceeds the local model's token limit. | Output quality degrades or model starts ignoring older context. | The Context Janitor service detects that history exceeds the limit (10 messages) *before* the turn runs, triggers compression, updates `WorkflowState`, and purges middle messages. |
 
 ---
 
-## 4. Developer's Extension Guide: Adding a Live Adapter
+## 4. Developer's Extension Guide: Adding a Local Model Adapter
 
-To add a new provider (e.g., a live integration for **Cohere** or **Mistral**) in a future release, follow these steps:
+To add a new local model (e.g., a template for **Qwen** or **Phi-3**) in a future release, follow these steps:
 
 ### Step 1: Create the Adapter Class
 Create a new class implementing `ProviderAdapter` in `com.conclave.integration.adapter`:
 ```java
-public class CohereAdapter implements ProviderAdapter {
+public class QwenAdapter implements ProviderAdapter {
     @Override
     public Object toProviderFormat(List<CanonicalMessage> history, WorkflowState state) {
-        // Translate canonical history and workflow state to Cohere API structure
-        return new CohereRequest(...);
+        // Format history and workflow state to Qwen's specific ChatML template format
+        return new QwenRequest(...);
     }
 
     @Override
     public CanonicalMessage fromProviderFormat(Object response) {
-        // Translate Cohere response payload back to CanonicalMessage
+        // Translate response payload back to CanonicalMessage
         return CanonicalMessage.builder()...build();
     }
 }
 ```
 
 ### Step 2: Register the Bean
-Add the new adapter configuration in `SpringAiConfig` or register it conditionally in `MessageOrchestratorImpl`:
+Add the new adapter configuration in `OllamaConfig` or register it conditionally in `MessageOrchestratorImpl`:
 ```java
-if (ModelId.COHERE.name().equals(modelId)) {
-    adapter = new CohereAdapter();
+if ("qwen".equals(modelId)) {
+    adapter = new QwenAdapter();
 }
 ```
 
 ### Step 3: Implement Unit Tests
-Create unit tests in `src/test/java/com/conclave/integration/adapter/CohereAdapterTest.java` verifying that:
-1.  Canonical messages are correctly mapped.
-2.  System context is injected into the provider request.
-3.  Alternating roles are enforced.
+Create unit tests in `src/test/java/com/conclave/integration/adapter/QwenAdapterTest.java` verifying that:
+1.  Canonical messages are correctly mapped into Qwen ChatML control tokens.
+2.  System context is injected into the prompt.
+3.  Context limits are respected.
 
 ---
 
 ## 5. Interview Talking Points (Architectural Defense)
 
 When defending the Provider Adapter Strategy in technical reviews:
-*   **Dependency Inversion Principle (DIP):** "The core orchestrator is completely decoupled from provider APIs. It depends on the `ProviderAdapter` interface, not the concrete implementations, allowing us to swap OpenAI from a simulated mock bean to a live endpoint via configuration profiles without changing a single line of business logic."
-*   **Single Responsibility Principle (SRP):** "Each adapter class has one job: translation. It contains no state and no network configuration. If Anthropic modifies its API structure, we only need to update the `ClaudeAdapter` class."
-*   **Robust Boundary Validation:** "We perform validation *before* making network calls. For example, `GeminiAdapter` checks for alternating roles in Java code rather than sending a malformed request over the network. This saves API costs and provides instant feedback to the user."
+*   **Template Unification:** "Different local open-source models require very specific chat templates (e.g., Llama 3 tokens vs. Mistral's instruction tags) to perform optimally. The `ProviderAdapter` abstraction layer shifts this template reconciliation to dedicated Java classes, ensuring our database representation remains 100% provider-agnostic."
+*   **Hardware and Resource Isolation:** "By executing inference locally via Ollama, we remove external network calls and cloud billing entirely. The adapter layer ensures we can manage context windows locally, preventing VRAM OOM crashes by running validations and history compression *before* submitting prompts to Ollama."
+*   **Single Responsibility Principle (SRP):** "Each adapter class has one job: template mapping. It contains no connection details or network configurations. If we swap a local `llama3` model for a new version with a different template, we only update the `LlamaAdapter` class."
