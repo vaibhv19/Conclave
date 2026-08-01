@@ -8,7 +8,7 @@ This document defines the centralized exception model, REST error payloads, and 
 
 Handling exceptions in an AI orchestration platform is complex because errors can occur in two distinct execution environments:
 1.  **Synchronous REST Requests:** Simple client-server HTTP transactions (e.g. logging in, creating rooms). Exceptions here must translate directly to standard HTTP status codes (4xx, 5xx) and JSON bodies.
-2.  **Asynchronous Orchestration Loops:** Long-running LLM stream generations executing on background **Virtual Threads**. If a third-party API rate limit (429) or JSON parsing failure occurs here, the client HTTP connection is already closed. The exception must be caught and broadcast to all subscribers over WebSockets via STOMP events.
+2.  **Asynchronous Orchestration Loops:** Long-running LLM stream generations executing on background **Virtual Threads**. If a local Ollama server connection failure, model registration error, out-of-VRAM event, or JSON parsing failure occurs here, the client HTTP connection is already closed. The exception must be caught and broadcast to all subscribers over WebSockets via STOMP events.
 
 ---
 
@@ -22,13 +22,13 @@ Conclave defines a structured hierarchy of custom exceptions inheriting from a r
                     │        (Runtime Base Class)      │
                     └────────────────┬─────────────────┘
                                      │
-       ┌──────────────────┬──────────┴────────┬───────────────────┐
-┌──────▼──────┐    ┌──────▼──────┐     ┌──────▼──────┐     ┌──────▼──────┐
-│  Resource   │    │Unauthorized │     │Orchestration│     │ Translation │
-│  NotFound   │    │   Access    │     │  Exception  │     │  Exception  │
-│  Exception  │    │  Exception  │     │ (Pipeline/  │     │ (Adapter    │
-│  (404)      │    │  (403)      │     │  Mentions)  │     │  Mapping)   │
-└─────────────┘    └─────────────┘     └─────────────┘     └─────────────┘
+        ┌──────────────────┬──────────┴────────┬───────────────────┐
+ ┌──────▼──────┐    ┌──────▼──────┐     ┌──────▼──────┐     ┌──────▼──────┐
+ │  Resource   │    │Unauthorized │     │Orchestration│     │ Translation │
+ │  NotFound   │    │   Access    │     │  Exception  │     │  Exception  │
+ │  Exception  │    │  Exception  │     │ (Pipeline/  │     │ (Adapter    │
+ │  (404)      │    │  (403)      │     │  Mentions)  │     │  Mapping)   │
+ └─────────────┘    └─────────────┘     └─────────────┘     └─────────────┘
 ```
 
 ### 2.1 Exceptions Registry
@@ -37,7 +37,7 @@ Conclave defines a structured hierarchy of custom exceptions inheriting from a r
 *   **`ResourceNotFoundException` (404):** Thrown when a room, message, or user UUID is not found in the database.
 *   **`UnauthorizedAccessException` (403):** Thrown when a user attempts to access or mutate a room owned by another account.
 *   **`OrchestrationException` (400):** Thrown when workflow operations violate constraints (e.g., submitting messages to a paused room, sending messages with no role mention, or requesting unregistered model IDs).
-*   **`TranslationException` (400):** Thrown by `ProviderAdapter` implementations if serialization constraints are violated (e.g., consecutive roles in `GeminiAdapter`).
+*   **`TranslationException` (400):** Thrown by `ProviderAdapter` implementations if serialization constraints or chat template validations are violated.
 *   **`EmailAlreadyExistsException` (409):** Thrown during registration if the user's email is already registered.
 *   **`InvalidMappingException` (400):** Thrown if role assignments map invalid parameters.
 
@@ -100,7 +100,7 @@ try {
 ```
 
 ### 4.1 Asynchronous Error Recovery Flow:
-1.  **Error Interception:** If an exception occurs (e.g., Gemini API key missing, network timeout, rate limit exceeded), the `catch` block captures it.
+1.  **Error Interception:** If an exception occurs (e.g. local Ollama server down, model not pulled, GPU out of VRAM, or context length exceeded), the `catch` block captures it.
 2.  **Notification Broadcast:** The backend compiles a `SystemInterventionEvent` with the error text and sends it to the STOMP destination `/topic/room/{roomId}`.
 3.  **UI Warning Display:** The React client receives the `SYSTEM_INTERVENTION` frame. The Zustand store appends the error notification, and the UI mounts the diagonally striped warning deck (Alert Banner), allowing the user to view the error and manually intervene.
 
@@ -118,4 +118,4 @@ To maintain data consistency under transactional exceptions:
 ## 6. Interview Talking Points (Architectural Defense)
 
 *   **Unified Exceptions Strategy:** "We separate REST and WebSocket exceptions. While REST endpoint validation maps directly to standard HTTP status codes via a global controller advice, async worker thread errors are caught inside the run loops and translated into real-time STOMP event frames (`SYSTEM_INTERVENTION`), ensuring the frontend is instantly notified of backend pipeline failures."
-*   **Async Thread Safety:** "Because async streaming processes run on separate Virtual Threads, they cannot rely on Tomcat's request-lifecycle transaction context. We handle exceptions locally inside each worker runnable to ensure that transactional rollbacks are triggered and pessimistic locks are released safely if an LLM call fails."
+*   **Async Thread Safety:** "Because async streaming processes run on separate Virtual Threads, they cannot rely on Tomcat's request-lifecycle transaction context. We handle exceptions locally inside each worker runnable to ensure that transactional rollbacks are triggered and pessimistic locks are released safely if a local model execution fails."
