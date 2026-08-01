@@ -18,13 +18,13 @@ This domain governs the lifecycle of collaborative multi-model session rooms.
 
 ## 2. Multi-Provider Orchestration & Adapters
 
-This domain maps provider-agnostic conversation logs into individual vendor schemas.
+This domain maps provider-agnostic conversation logs into individual local model chat templates.
 
 | Feature Name | Description | Inputs | Outputs | State Transitions | Failure Modes & Mitigations |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Schema Translation** (`ProviderAdapter`) | Maps a flat history list (`CanonicalMessage`) and context summary (`WorkflowState`) into API-specific request models. | `List<CanonicalMessage>`, `WorkflowState`. | Vendor-specific payload (`GeminiRequest`, `OpenAiRequest`, `ClaudeRequest`). | None (Stateless translation). | **Failure:** Alternating role validation failure in Gemini. <br>**Mitigation:** Throws `TranslationException` and prevents API invocation. |
-| **Model Registry** (`ModelRegistry`) | Dynamically resolves and fetches Spring AI `ChatClient` and `ChatModel` beans by Model ID. | `modelId` (String). | Resolved `@Bean` instance of `ChatClient`/`ChatModel`. | None. | **Failure:** Unregistered Model ID requested. <br>**Mitigation:** Throws `OrchestrationException` during startup or turn resolution. |
-| **Fake Provider Simulation** (`FakeChatClient`) | Simulates responses and latency for OpenAI and Claude to enable cost-free demos. | `Prompt`. | `ChatResponse` containing simulated text and heuristic metadata. | Appends mock messages to `conversation_history`. | **Failure:** Mock service latency issues. <br>**Mitigation:** Runs on a dedicated virtual thread to isolate blocking delays. |
+| **Schema Translation** (`ProviderAdapter`) | Maps a flat history list (`CanonicalMessage`) and context summary (`WorkflowState`) into model-specific chat templates, resolving system prompt rules and context limits. | `List<CanonicalMessage>`, `WorkflowState`. | Model-specific prompt structure or formatted chat template string. | None (Stateless translation). | **Failure:** Mismatched chat template structure or validation failure. <br>**Mitigation:** Throws `TranslationException` and blocks invocation. |
+| **Model Registry** (`ModelRegistry`) | Dynamically resolves and fetches Spring AI `OllamaChatModel` beans by Model ID. | `modelId` (String). | Resolved `@Bean` instance of `OllamaChatModel`. | None. | **Failure:** Unregistered Model ID requested. <br>**Mitigation:** Throws `OrchestrationException` during startup or turn resolution. |
+| **Local Ollama Inference** (`OllamaChatModel`) | Connects directly to the local Ollama instance to execute real inference for every role mapping. | `Prompt`. | `ChatResponse` containing model-generated text chunks and actual token usage metadata. | Appends actual inference response to `conversation_history`. | **Failure:** Ollama server down, model not pulled, or GPU OOM. <br>**Mitigation:** Catches exception, broadcasts `SYSTEM_INTERVENTION` and pauses pipeline, suggesting user checks service status. |
 
 ---
 
@@ -34,7 +34,7 @@ This domain manages token count efficiency by summarizing history and purging mi
 
 | Feature Name | Description | Inputs | Outputs | State Transitions | Failure Modes & Mitigations |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **History Compactor** (`WorkflowStateServiceImpl`) | Triggers automatically when messages in a room exceed 10. | Room UUID. | JSON object with `currentDraft` and `reviewComments`. | - Updates `workflow_state` table. <br>- Deletes middle messages in database (retains index 0 and last 2). | **Failure:** Gemini summarizer output fails JSON parsing. <br>**Mitigation:** Fallback logic sets full response to `currentDraft` and logs warning in `reviewComments`. |
+| **History Compactor** (`WorkflowStateServiceImpl`) | Triggers automatically when messages in a room exceed 10. | Room UUID. | JSON object with `currentDraft` and `reviewComments`. | - Updates `workflow_state` table. <br>- Deletes middle messages in database (retains index 0 and last 2). | **Failure:** Ollama local summarizer model output fails JSON parsing. <br>**Mitigation:** Fallback logic sets full response to `currentDraft` and logs warning in `reviewComments`. |
 | **Telemetry State Builder** (`WorkflowStateDTO`) | Packages task objective, latest draft, review comments, and short-term memory for frontend. | Room UUID. | Completed `WorkflowStateDTO` with active messages. | None (Read-only compilation). | **Failure:** Message repository returns empty list. <br>**Mitigation:** Returns default initial state with empty lists. |
 
 ---
@@ -46,7 +46,7 @@ This domain handles live message dispatching and chunk-by-chunk streaming over W
 | Feature Name | Description | Inputs | Outputs | State Transitions | Failure Modes & Mitigations |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **STOMP Broadcast** (`WebSocketConfig`) | Exposes pub/sub channels (`/topic/room/{roomId}`) for real-time telemetry. | Model tokens/chunks generated in backend. | STOMP event packets (`TURN_STARTED`, `CONTENT_CHUNK`, `TURN_COMPLETED`, `SYSTEM_INTERVENTION`). | Push updates client-side without page reload. | **Failure:** Client socket connection drop. <br>**Mitigation:** Client-side `@stomp/stompjs` auto-reconnects; frontend runs GET sync backup. |
-| **Stream Consumer Loop** (`MessageOrchestratorImpl`) | Consumes `Flux<ChatResponse>` blocking-style on a Virtual Thread and pushes chunks to WebSocket. | Room UUID, role, prompt. | Continuous text chunks broadcast to UI. | Updates UI input state to disabled during generation. | **Failure:** Model API returns empty stream. <br>**Mitigation:** Catches exception, broadcasts `SYSTEM_INTERVENTION` error message to UI, and resumes. |
+| **Stream Consumer Loop** (`MessageOrchestratorImpl`) | Consumes `Flux<ChatResponse>` blocking-style on a Virtual Thread and pushes chunks to WebSocket. | Room UUID, role, prompt. | Continuous text chunks broadcast to UI. | Updates UI input state to disabled during generation. | **Failure:** Ollama local server API returns empty stream. <br>**Mitigation:** Catches exception, broadcasts `SYSTEM_INTERVENTION` error message to UI, and resumes. |
 
 ---
 
@@ -69,4 +69,4 @@ This domain manages user identity and token consumption audit logs.
 | Feature Name | Description | Inputs | Outputs | State Transitions | Failure Modes & Mitigations |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **JWT Stateless Security** (`JwtAuthenticationFilter`) | Intercepts HTTP and WebSocket upgrade headers to validate tokens. | Authorization Bearer HTTP header. | Authentication Context injection. | None. | **Failure:** Expired or malformed JWT token. <br>**Mitigation:** Returns `401 Unauthorized` response to client. |
-| **Token Usage Logger** (`TokenUsageLogService`) | Logs actual or simulated tokens for audit and cost analysis. | Room UUID, message ID, model ID, prompt tokens, completion tokens. | Database entry in `token_usage_log`. | None. | **Failure:** Token usage metadata missing in response. <br>**Mitigation:** Calculates estimated usage based on character length / 4. |
+| **Token Usage Logger** (`TokenUsageLogService`) | Logs actual tokens parsed from local inference for audit and performance metrics. | Room UUID, message ID, model ID, prompt tokens, completion tokens. | Database entry in `token_usage_log`. | None. | **Failure:** Token usage metadata missing in response. <br>**Mitigation:** Calculates estimated usage based on character length / 4. |
