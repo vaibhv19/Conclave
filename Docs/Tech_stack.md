@@ -1,6 +1,6 @@
 # Tech Stack Specification: Conclave
 
-This document defines the architectural choices, technical specifications, and system integration rationales for the **Conclave** platform. The stack is designed to demonstrate high-concurrency systems integration, state synchronization, and the **Adapter Design Pattern** in multi-provider AI orchestration.
+This document defines the architectural choices, technical specifications, and system integration rationales for the **Conclave** platform. The stack is designed to demonstrate high-concurrency systems integration, state synchronization, and the **Adapter Design Pattern** in local multi-model AI orchestration.
 
 ---
 
@@ -12,7 +12,7 @@ This document defines the architectural choices, technical specifications, and s
 | :--- | :--- | :--- | :--- | :--- |
 | **Java (JDK)** | `21` | Harnesses **Virtual Threads** (Loom) to handle highly-concurrent blocking LLM API transactions without running out of carrier threads. | JDK 17 (OS-level platform threads only). | Virtual threads simplify concurrency; however, pin warning checks must be monitored if synchronized blocks are hit. |
 | **Spring Boot** | `3.3.1` | Provides the baseline framework for dependency injection, auto-configuration, and transaction boundaries. | Node.js (Express), Python (FastAPI). | Java/Spring delivers compile-time safety and a standard dependency structure, but has higher startup times than Node/FastAPI. |
-| **Spring AI** | `1.0.0-M1` | Standardizes LLM client client interfaces (`ChatClient`, `ChatModel`) across vendors. | LangChain4j, custom raw HTTP wrappers. | Spring AI provides native Spring integration, though its rapid release lifecycle can introduce breaking updates. |
+| **Spring AI (Ollama)** | `1.0.0-M1` | Standardizes local model client interfaces (`OllamaChatModel`, `ChatClient`) utilizing Spring AI's Ollama integrations. | LangChain4j, custom raw HTTP wrappers. | Spring AI provides native Spring integration, though its rapid release lifecycle can introduce breaking updates. |
 | **Spring Security** | `6.x` | Coordinates JWT-based stateless authentication filters for security and room operations. | Session-based state, OAuth2 Resource Servers. | JWT-based auth avoids database lookups for session verification, but complicates token revocation. |
 | **Spring Data JPA** | `3.x` | Manages relational object mapping (Hibernate) and transactional locking. | JDBC Template, MyBatis. | JPA accelerates CRUD development, but requires careful tuning to avoid the N+1 query problem. |
 
@@ -53,24 +53,25 @@ When orchestrating multiple API integrations (which are notoriously slow and blo
 
 ---
 
-## 3. Systems-Level Defense: Mocking Strategy
+## 3. Systems-Level Strategy: Local Ollama Inference
 
-A key architectural highlight of Conclave is its use of Java-level mock classes (`FakeOpenAiChatClient`, `FakeClaudeChatClient`) rather than network-level proxies (like WireMock) or completely omitting other providers.
+A key architectural highlight of Conclave is its reliance on a locally-run Ollama service for running model inference. Outgoing calls are dispatched locally to model instances running on the developer's hardware.
 
 ```
-       [ HTTP MOCK SYSTEM (WireMock) ]
-       Outgoing REST Call ---> Intercepted at Port ---> Returns JSON String
-       * Issues: Only tests HTTP network client serialization; ignores bean-lifecycle integration.
+       [ CLOUD API OR MOCK SYSTEM ]
+       Outgoing REST Call ---> Cloud Gateway ---> Returns JSON String (Expensive / High Latency / Privacy Leak)
 
-       [ CONCLAVE BEAN-LAYER MOCK SYSTEM ]
-       MessageOrchestrator ---> ChatClient Bean (FakeOpenAiChatClient) ---> Simulated Latency
-                                     │
-                                     └──> Validates Adapter.toProviderFormat serialization
-                                     └──> Generates Spring AI ChatResponse
-       * Benefits: Exercises the Adapter Pattern directly; supports easy @Profile hot-swapping.
+       [ CONCLAVE LOCAL OLLAMA SYSTEM ]
+       MessageOrchestrator ---> ChatModel Bean (OllamaChatModel) ---> Real Local GPU/CPU Inference
+                                      │
+                                      └──> Validates Adapter.toProviderFormat serialization (chat templates)
+                                      └──> Submits request to http://localhost:11434
+                                      └──> Streams real model output chunks in real-time
+       * Benefits: Exercises actual model reasoning locally; 100% offline & secure; $0 cost.
 ```
 
-### 3.1 Why Bean-Layer Mocking Wins in Engineering Reviews:
-1.  **Testing the Adapter directly:** WireMock merely intercepts network sockets and returns hardcoded JSON. By implementing custom `ChatClient` classes, we force the backend to run the actual translation code (`ProviderAdapter.toProviderFormat`) that maps the canonical message history into OpenAI's and Claude's specific API formats. This verifies the **serialization structure** and validation rules in Java code.
-2.  **State and Latency Simulation:** Real LLMs stream their responses over time. The fake clients simulate this latency by splitting mock responses and generating chunks periodically on virtual threads. This exercises the frontend STOMP chunk handlers under realistic network conditions.
-3.  **Plug-and-Play Profiles:** Switching OpenAI or Claude to a live integration in v2 requires no changes to the business logic. We simply swap the Bean definition in Spring AI using profile annotations (`@Profile("prod")` vs `@Profile("dev")`), demonstrating a clean modular architecture.
+### 3.1 Why Local Ollama Inference Wins in Engineering Reviews:
+1.  **Testing Chat Templates directly:** By mapping to local models, the backend runs the actual prompt-assembly code (`ProviderAdapter.toProviderFormat`) that injects the canonical message history and state into model-specific chat templates (e.g., Llama 3 tags vs. Gemma tokens). This verifies **prompt serialization and token structure** in Java code before execution.
+2.  **Real Latency and Performance Auditing:** Instead of fake delay loops, the system handles real model inference. Response chunks stream back based on local hardware capabilities, providing a high-fidelity representation of streaming speed, CPU/GPU loads, and memory bottlenecks.
+3.  **Local Data Isolation:** All conversations remain entirely within the local host (or private server). No data is sent to external AI providers, satisfying security rules for private development and eliminating any potential cloud billing costs.
+4.  **Flexible Model Selection:** Swapping models is done by configuration. By modifying the `modelId` (e.g., swapping `llama3` for `mistral`), the backend resolves the correct chat model and connects to Ollama, demonstrating a clean modular design.
