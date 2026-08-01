@@ -6,8 +6,8 @@ This document defines the security policies, authentication flows, authorization
 
 ## 1. Problem & Threat Model
 
-Orchestrating multi-provider AI workspaces in a collaborative environment introduces key security challenges:
-*   **API Key Compromise:** Exposing third-party provider keys (Google Vertex AI, OpenAI, Anthropic) to client-side code leads to credentials theft and cost abuse.
+Orchestrating multi-model AI workspaces in a collaborative environment introduces key security challenges:
+*   **Data Leakage & Cloud Exposure:** Sending sensitive conversation data, project objectives, or proprietary draft code to external cloud AI providers (e.g., OpenAI, Google Gemini, Anthropic) risks intellectual property exposure and violates compliance guidelines.
 *   **Cross-Tenant Data Exposure:** Unauthorized users must not be able to read room objectives, chat histories, or draft summaries belonging to other users.
 *   **Orchestration Hijacking:** Attackers must be prevented from injecting rogue prompts, hijacking active model queues, or triggering spam model executions.
 *   **WebSocket Interception:** STOMP socket connections must be validated and isolated, preventing malicious users from subscribing to and listening to other rooms' event streams.
@@ -35,10 +35,10 @@ Conclave uses a **Stateless JWT (JSON Web Token) Security Model**. The server do
        * Validates expiration claims                                    * Binds user to STOMP principal
                   │                                                                │
                   ▼                                                                ▼
-     ┌──────────────────────────┐                                     ┌──────────────────────────┐
-     │ SecurityContextHolder    │                                     │ WebSocket SimpUser       │
-     │ (REST Authentication)    │                                     │ (Authorized Socket)      │
-     └──────────────────────────┘                                     └──────────────────────────┘
+      ┌──────────────────────────┐                                     ┌──────────────────────────┐
+      │ SecurityContextHolder    │                                     │ WebSocket SimpUser       │
+      │ (REST Authentication)    │                                     │ (Authorized Socket)      │
+      └──────────────────────────┘                                     └──────────────────────────┘
 ```
 
 ### 2.1 REST Token Verification Lifecycle (`JwtAuthenticationFilter`)
@@ -78,12 +78,12 @@ if (!room.getOwner().getId().equals(requester.getId())) {
 
 ---
 
-## 4. API Secret Management
+## 4. Localized Execution & Zero Cloud Credentials
 
-To keep LLM API keys safe and secure, Conclave implements a strict backend-only communication model:
-*   **Backend Isolation:** All external API requests to Google Vertex AI are dispatched exclusively by the Spring Boot backend (`VertexAiChatClient`). The frontend has no direct communication with LLM provider endpoints.
-*   **Environment Injection:** The Gemini API key is injected at runtime using environment variables (`SPRING_AI_VERTEX_AI_GEMINI_API_KEY`) and is never written to public source repositories.
-*   **Mock Credentials Exclusion:** The mock adapters (`FakeOpenAiChatClient` and `FakeClaudeChatClient`) generate responses locally and require no external keys, maintaining $0 spend during development and demo execution.
+To ensure complete data privacy and security, Conclave implements a localized model execution strategy:
+*   **Zero External API Credentials:** Because all models run on the local host via Ollama, there are no third-party API keys (like Google Vertex AI, OpenAI, or Claude keys) stored on the backend or transmitted over the network.
+*   **Backend Proxying:** The React frontend never connects to Ollama directly. All connections are proxied and authenticated via the Spring Boot backend using JWTs, ensuring workspace isolation.
+*   **Elimination of Key Compromise Threat:** Standard risk vectors like API key compromise, billing spikes, and credential exposure in code repositories are completely mitigated.
 
 ---
 
@@ -101,4 +101,4 @@ To keep LLM API keys safe and secure, Conclave implements a strict backend-only 
 
 *   **Stateless JWT vs Stateful Sessions:** "We chose stateless JWTs to decouple authentication state from the backend. This enables horizontal scaling without needing shared session clustering (e.g. Redis Session stores), making the backend lightweight."
 *   **Secure WebSockets Handshake:** "We secure WebSockets by registering a custom STOMP channel interceptor. Rather than trusting any client that completes the HTTP upgrade handshake, we validate the JWT signature during the STOMP `CONNECT` frame and enforce destination-level ownership checks during `SUBSCRIBE` requests, preventing cross-tenant channel eavesdropping."
-*   **Zero-Trust API Key Policy:** "We enforce a zero-trust API architecture. The React frontend is completely unaware of LLM API keys. It only communicates with our Spring Boot server using secure JWT tokens. The server acts as a secure proxy, resolving models and injecting credentials server-side."
+*   **Zero Cloud Footprint / Complete Data Privacy:** "We enforce a zero cloud footprint architecture. All AI inference is run locally via Ollama. The React frontend is completely unaware of LLM connection mechanics, only communicating with our Spring Boot server using secure JWT tokens. The server handles template formatting and interfaces with the local Ollama daemon, ensuring no data ever leaves the local environment."
