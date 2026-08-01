@@ -21,14 +21,14 @@ graph TD
 ```
 
 1.  **Room Setup Init:** The user enters a room name and a system objective (e.g., "Write and review security schemas") in the React interface.
-2.  **Role Assignment:** The user assigns specific roles (e.g., "Writer" to `GEMINI_PRO`, "Reviewer" to `FAKE_CLAUDE`) and sets the order of execution (Pipeline Sequence).
+2.  **Role Assignment:** The user assigns specific roles (e.g., "Writer" to `llama3`, "Reviewer" to `mistral`) and sets the order of execution (Pipeline Sequence).
 3.  **Config Dispatch:** The React client fires a `POST /api/rooms` request containing the config mappings to `RoomController`.
 4.  **Registry Validation:** The backend validates that all assigned model IDs exist within the `ModelRegistry` bean map.
 5.  **State Initialization:**
-    *   A database transaction writes rows to the `rooms` and `role_assignments` tables.
-    *   The room status is set to `INITIALIZED`.
-    *   A default `WorkflowState` record is generated with empty fields for `current_draft` and `review_comments`.
-6.  **Client Sync:** The controller returns `RoomResponse`. React navigates to the workspace view, establishes a WebSocket connection to the server, and subscribes to the STOMP channel `/topic/room/{roomId}`.
+6.  A database transaction writes rows to the `rooms` and `role_assignments` tables.
+7.  The room status is set to `INITIALIZED`.
+8.  A default `WorkflowState` record is generated with empty fields for `current_draft` and `review_comments`.
+9.  **Client Sync:** The controller returns `RoomResponse`. React navigates to the workspace view, establishes a WebSocket connection to the server, and subscribes to the STOMP channel `/topic/room/{roomId}`.
 
 ---
 
@@ -43,8 +43,8 @@ sequenceDiagram
     participant ChatCtrl as ChatController
     participant Orch as MessageOrchestratorImpl
     participant Reg as ModelRegistryImpl
-    participant Adap as ProviderAdapter (e.g., GeminiAdapter)
-    participant ChatClt as ChatClient / ChatModel
+    participant Adap as ProviderAdapter (e.g., LlamaAdapter)
+    participant ChatClt as OllamaChatModel
     participant WS as SimpMessagingTemplate
     participant DB as PostgreSQL
 
@@ -57,23 +57,20 @@ sequenceDiagram
     end
 
     Orch->>Orch: Parse Mention (e.g., "@Writer")
-    Orch->>Reg: getClient(modelId) / getChatModel(modelId)
-    Reg-->>Orch: Return ChatClient Bean
+    Orch->>Reg: getClient(modelId)
+    Reg-->>Orch: Return OllamaChatModel Bean
     Orch->>Adap: toProviderFormat(history, state)
-    Adap-->>Orch: Return Vendor Request Payload
+    Adap-->>Orch: Return Model Request Prompt
     
     Orch->>WS: Broadcast TURN_STARTED Event
     
-    alt Streaming API Call (Gemini Pro)
+    rect rgb(20, 20, 25)
+        Note over Orch, ChatClt: Real Local Inference
         Orch->>ChatClt: stream(Prompt)
         ChatClt-->>Orch: Flux<ChatResponse> (Chunks)
         loop Process Chunk Stream
             Orch->>WS: Broadcast CONTENT_CHUNK Event
         end
-    else Fake API Call (OpenAI/Claude)
-        Orch->>ChatClt: prompt().call() (Mocked Latency)
-        ChatClt-->>Orch: ChatResponse (Full Output)
-        Orch->>WS: Simulate Streaming Chunks
     end
 
     Orch->>Adap: fromProviderFormat(responsePayload)
@@ -85,12 +82,11 @@ sequenceDiagram
 1.  **Command Dispatched:** The user types a message containing an @-mention (e.g., `"@LeadWriter draft the database schema"`).
 2.  **Controller Injection:** `ChatController` intercepts the payload and invokes `MessageOrchestrator.processUserTurn`.
 3.  **User Message Saved:** The raw user input is saved as a `CanonicalMessage` with `sender_type = USER`.
-4.  **Mention Extraction:** `MentionParser` extracts the role name, looks up the assigned Model ID via `RoleAssignmentRepository`, and resolves the corresponding Spring AI `ChatClient` from the `ModelRegistry`.
-5.  **Adapter Translation:** The `ProviderAdapter` implementation (e.g. `GeminiAdapter`) translates the canonical message history and the active `WorkflowState` into the exact JSON structure expected by the vendor.
+4.  **Mention Extraction:** `MentionParser` extracts the role name, looks up the assigned Model ID via `RoleAssignmentRepository`, and resolves the corresponding Spring AI `OllamaChatModel` from the `ModelRegistry`.
+5.  **Adapter Translation:** The `ProviderAdapter` implementation (e.g. `LlamaAdapter`) translates the canonical message history and the active `WorkflowState` into the exact prompt structure (including special chat templates and token structures) expected by the target local model.
 6.  **Real-Time Broadcasts:**
     *   Backend broadcasts a `TURN_STARTED` event over the WebSocket topic.
-    *   For streaming (Gemini), `ChatModel.stream()` returns a reactive `Flux<ChatResponse>`. The server consumes this flux on a Virtual Thread, writing incoming fragments directly to the WebSocket via `CONTENT_CHUNK` events.
-    *   For fake clients, the bean generates a mock response, delays execution to simulate API latency, and streams it chunk-by-chunk over the socket.
+    *   For streaming, `OllamaChatModel.stream()` returns a reactive `Flux<ChatResponse>`. The server consumes this flux on a Virtual Thread, writing incoming fragments directly to the WebSocket via `CONTENT_CHUNK` events in real-time.
 7.  **Response Synthesis:** Once the stream completes, the final response is normalized back into a `CanonicalMessage` with `sender_type = AI`. It is saved to PostgreSQL, along with a `TokenUsageLog` audit record, and a `TURN_COMPLETED` STOMP frame is broadcast.
 
 ---
@@ -106,7 +102,7 @@ flowchart TD
     Check -- Yes --> Load[Load history & WorkflowState]
     Load --> Format[Format transcript into text block]
     Format --> Prompt[Compile Janitor System Prompt]
-    Prompt --> API[Invoke Gemini Pro Summarizer]
+    Prompt --> API[Invoke local summarizer model (e.g. Llama 3)]
     API --> Parse{Parse JSON Response?}
     Parse -- Success --> Update[Update WorkflowState draft & comments]
     Parse -- JSON Failure --> Fallback[Set full output to draft & log error]
@@ -120,7 +116,7 @@ flowchart TD
 1.  **Trigger Check:** At the end of `MessageOrchestratorImpl.executeStreamingTurnAsync`, the orchestrator invokes `WorkflowStateService.evaluateAndCompressHistory`.
 2.  **Size Check:** If the current `conversation_history` count is less than or equal to 10 messages, the operation exits.
 3.  **Summarization Compilation:** If history is > 10, the service formats the entire transcript and builds a compression prompt for the `Conclave Janitor`.
-4.  **Consolidation Request:** The backend calls `Gemini Pro` to incorporate agreed changes into the draft and extract unresolved tasks as review comments, requesting a strict JSON response:
+4.  **Consolidation Request:** The backend calls a local summarizer model (e.g., Llama 3 or Mistral) to incorporate agreed changes into the draft and extract unresolved tasks as review comments, requesting a strict JSON response:
     ```json
     { "currentDraft": "...", "reviewComments": "..." }
     ```
