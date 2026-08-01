@@ -7,12 +7,12 @@ This document defines the testing methodology, validation tiers, and concurrency
 ## 1. The Challenge of AI & Real-Time Testing
 
 Testing a multi-provider AI orchestration platform presents unique challenges:
-*   **API Non-Determinism:** Real LLM APIs yield different responses for identical inputs, making assertions unstable.
-*   **Financial Cost:** Running full end-to-end integration tests using real API keys (e.g. Gemini, OpenAI) during CI/CD runs incurs continuous cost.
+*   **API Non-Determinism:** Local LLM outputs yield different responses for identical inputs, making exact-string assertions unstable.
+*   **Inference Performance & Latency:** Running local model inference during automated test cycles can consume significant CPU/GPU resources and slow down execution.
 *   **Real-time Synchronization:** Verifying that WebSocket STOMP chunks are broadcast in the correct order requires testing async event loops.
 *   **Concurrency Race Conditions:** Verifying that pessimistic database locks block concurrent status changes requires simulating simultaneous thread execution.
 
-To solve this, Conclave implements a **three-tiered testing strategy** combining static unit testing, embedded database integration testing, and mock-driven end-to-end simulation.
+To solve this, Conclave implements a **three-tiered testing strategy** combining static unit testing, embedded database integration testing, and local Ollama-based integration simulation.
 
 ---
 
@@ -22,7 +22,7 @@ To solve this, Conclave implements a **three-tiered testing strategy** combining
   ┌────────────────────────────────────────────────────────┐
   │              Unit Testing Tier (JUnit 5)               │
   │  * Target: ProviderAdapter implementations             │
-  │  * Methods: Translates static JSON strings to objects  │
+  │  * Methods: Translates CanonicalMessage log to prompts │
   │  * Mocking: Mockito (no network calls, 100% stable)    │
   └───────────────────────────┬────────────────────────────┘
                               │
@@ -30,14 +30,14 @@ To solve this, Conclave implements a **three-tiered testing strategy** combining
   │        Integration Testing Tier (@SpringBootTest)      │
   │  * Target: ModelRegistry, Transactions & JPA           │
   │  * Database: Embedded H2 / PostgreSQL container        │
-  │  * concurrency: Latch-controlled multi-threaded test   │
+  │  * Concurrency: Latch-controlled multi-threaded test   │
   └───────────────────────────┬────────────────────────────┘
                               │
   ┌───────────────────────────▼────────────────────────────┐
-  │         Mock-Driven End-to-End simulation              │
+  │      Local Integration & End-to-End Testing            │
   │  * Target: WebSockets, STOMP broadcasts, UI updates   │
-  │  * Execution: UI + FakeChatClient beans                │
-  │  * Cost: $0 real API spend (runs offline)              │
+  │  * Execution: UI + local Ollama test configurations   │
+  │  * Cost: $0 real API spend (runs offline locally)      │
   └────────────────────────────────────────────────────────┘
 ```
 
@@ -45,12 +45,9 @@ To solve this, Conclave implements a **three-tiered testing strategy** combining
 
 ## 3. Tier 1: Unit Testing (Adapter Mapping Validation)
 
-Unit tests focus on proving the mathematical correctness of the adapter translation code. They run 100% offline, verify formatting logic, and check boundary conditions:
-*   **Input Mocking:** Static JSON templates of raw OpenAI and Gemini response payloads are loaded from resource directories.
-*   **Assertions:**
-    *   Verifies that a `List<CanonicalMessage>` transforms into a valid target-specific JSON request payload (e.g. testing that Claude's system prompt is extracted into the root parameter).
-    *   Verifies that the target response converts back into a `CanonicalMessage`.
-*   **Enforcing Validation Constraints:** Tests that `GeminiAdapter` throws a `TranslationException` if sequential user or model messages are passed, confirming boundary validations work before network calls are made.
+Unit tests focus on proving the correctness of the adapter template generation. They run 100% offline, verify formatting logic, and check boundary conditions:
+*   **Prompt Formatting Verification:** Asserts that a `List<CanonicalMessage>` transforms into a valid target-specific chat template prompt (e.g. checking that Llama 3 adapters output correct control tags like `<|start_header_id|>system<|end_header_id|>`).
+*   **Enforcing Validation Constraints:** Tests that the adapters fail gracefully if history formatting constraints (like token length checks) are violated, confirming boundary validations work before network calls are made.
 
 ---
 
@@ -68,10 +65,10 @@ class ModelRegistryTest {
     private ModelRegistry modelRegistry;
 
     @Test
-    void testResolveChatClient() {
-        ChatClient client = modelRegistry.getClient("FAKE_CLAUDE");
-        assertNotNull(client);
-        assertTrue(client instanceof FakeClaudeChatClient);
+    void testResolveChatModel() {
+        ChatModel model = modelRegistry.getClient("llama3");
+        assertNotNull(model);
+        assertTrue(model instanceof OllamaChatModel);
     }
 }
 ```
@@ -85,16 +82,17 @@ To verify that `PESSIMISTIC_WRITE` locks block concurrent state modifications sa
 
 ---
 
-## 5. Tier 3: Mock-Driven End-to-End Simulation
+## 5. Tier 3: Local Ollama End-to-End Testing
 
 End-to-End tests verify the real-time sync between the backend services, the WebSocket broker, and the React UI:
-*   **No-Cost Pipelines:** By configuring the active profile to mock-driven stubs, testers can run complete multi-model workflow runs (e.g., Writer &rarr; Critic &rarr; Reviewer) locally.
+*   **Local Test Configurations:** The testing suite is configured to point to a local Ollama server running lightweight models (e.g., Qwen 1.5B or Gemma 2B) for rapid local inference. This allows running full collaborative pipelines (Writer &rarr; Critic &rarr; Reviewer) locally.
 *   **WebSocket Verification:** Tests verify that STOMP subscribers receive `TURN_STARTED`, `CONTENT_CHUNK`, and `TURN_COMPLETED` packets in sequence, and that the local Zustand store appends text chunks without gaps.
-*   **Compaction Auditing:** Verifies that once history exceeds 10 messages, the Context Janitor is triggered, the draft is updated, and middle messages are purged from the database.
+*   **Compaction Auditing:** Verifies that once history exceeds 10 messages, the Context Janitor is triggered, the draft is updated via the local summarizer model, and middle messages are purged from the database.
 
 ---
 
 ## 6. Interview Talking Points (Architectural Defense)
 
-*   **Offline Adapter Validation:** "We separate API integration testing from mapping correctness. Rather than making live calls or proxying endpoints via WireMock, we load static vendor JSON responses as resources and test the adapters in isolation. This allows us to guarantee schema translation correctness offline, without incurring API costs or dealing with network instability."
+*   **Offline Adapter Validation:** "We separate prompt template formatting verification from runtime inference. Rather than making live calls or proxying endpoints, we test the template mappers in isolation, asserting that canonical histories translate exactly to Llama/Mistral/Gemma special token structures. This ensures formatting accuracy before we hit the Ollama API."
+*   **Test Suite Efficiency with Lightweight Models:** "To prevent GPU overhead during local testing, our test profiles route inference calls to highly optimized, lightweight local models (e.g., Gemma 2B or Qwen 1.5B) run via Ollama. This demonstrates a production-ready testing setup where 100% real inference is verified with zero cloud billing and minimal local latency."
 *   **Simulating Concurrency Locks:** "We test database concurrency by executing parallel database queries synchronized via a `CountDownLatch`. This forces two transactions to hit the database at the same instant, proving that the pessimistic lock (`SELECT FOR UPDATE`) locks the row and forces concurrent requests to execute sequentially rather than causing race conditions."
