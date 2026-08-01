@@ -75,3 +75,16 @@ Configure these environment variables in your server hosting space:
 
 *   **Gemini Rate Limits:** Using Vertex AI free tier API keys restricts consecutive stream executions under load. (Planned mitigation: v2.0.0 will swap OpenAI/Claude mocks to live endpoints, allowing load balancing across multiple API keys).
 *   **Single-Threaded Pipeline Queue:** Pipeline loops execute sequentially. Parallel multi-model consensus checks are planned for v3.0.0.
+
+---
+
+## 🔄 Provider Strategy Pivot (August 2, 2026) - Transition to Local Ollama Models
+
+Conclave has transitioned its core AI orchestration engine from a hybrid model (live cloud Gemini + mocked OpenAI/Claude) to **100% real local inference** powered by a local **Ollama** server deployment. This strategic change shifts the platform to a zero-cost, high-privacy, and high-fidelity collaboration workspace.
+
+### Key Changes
+*   **Removal of Cloud API Dependencies:** Removed all dependencies and configuration settings related to GCP Vertex AI and cloud API credentials.
+*   **Elimination of Mock/Fake Clients:** Removed all simulated stub classes (`FakeOpenAiChatClient`, `FakeClaudeChatClient`). Every agent role execution now triggers a real inference request.
+*   **Ollama Client Integration:** Configured Spring AI's Ollama integration to connect to a local Ollama daemon (`http://localhost:11434`), supporting local models (e.g., Llama 3, Mistral, Gemma).
+*   **Chat Template Adaptation:** Rewrote the adapter layer to reconcile formatting, control tokens, and system-prompt placement across different local model chat templates (Llama 3 special tokens, Mistral INST format, Gemma turn structures).
+*   **Resource and VRAM Management:** Updated the Context Janitor history compression triggers to account for the smaller context windows of local models, preventing VRAM Out-of-Memory failures on developer machines.
