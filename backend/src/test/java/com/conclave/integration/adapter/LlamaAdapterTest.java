@@ -4,7 +4,6 @@ import com.conclave.domain.CanonicalMessage;
 import com.conclave.domain.Room;
 import com.conclave.domain.WorkflowState;
 import com.conclave.domain.enums.SenderType;
-import com.conclave.exception.TranslationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.Message;

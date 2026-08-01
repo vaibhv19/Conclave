@@ -1,7 +1,6 @@
 package com.conclave.service;
 
 import com.conclave.domain.*;
-import com.conclave.domain.enums.ModelId;
 import com.conclave.domain.enums.SenderType;
 import com.conclave.exception.OrchestrationException;
 import com.conclave.exception.ResourceNotFoundException;
