@@ -107,7 +107,7 @@ During analysis, the following structural discrepancies were found across docume
 
 ## 3. Development Phases
 
-The implementation is divided into **11 sequential, atomic development phases**. Each phase is documented in its own file in this directory.
+The implementation is divided into **12 sequential, atomic development phases**. Each phase is documented in its own file in this directory.
 
 | Phase | Title | Focus | Primary Outputs |
 | :--- | :--- | :--- | :--- |
@@ -121,7 +121,8 @@ The implementation is divided into **11 sequential, atomic development phases**.
 | **08** | [Pipeline Control System](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_08_Pipeline_Control.md) | Pause / Resume orchestration | Thread-safe room locking state machine, Intervention logic |
 | **09** | [Frontend Foundation](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_09_Frontend_Base.md) | Frontend core & STOMP integration | React router, Zustand authorization & socket stores, API clients |
 | **10** | [Frontend UI Components](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_10_Frontend_UI_Components.md) | Interactive Chat View UI | Message Matrix, @-Mention selector, Shared Context Sidebar, overlays |
-| **11** | [Verification & Documentation Audit](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_11_Verification_And_Documentation.md) | End-to-End verification | Integration suite, final repository validation, Learning docs index |
+| **11** | [Developer Experience & Environment Setup](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_11_Developer_Experience_And_Setup.md) | Onboarding & verification | Environment audit, startup flows validation, troubleshooting configs |
+| **12** | [Documentation & Repository Audit](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_12_Documentation_And_Repository_Audit.md) | End-to-End verification | Playwright tests suite, Learning handbook index, repository release |
 
 ---
 
@@ -142,6 +143,8 @@ gantt
     section Frontend
     Milestone 5 - Frontend Auth & Rooms   : m5, after m4, 3d
     Milestone 6 - Multi-Model Workspace   : m6, after m5, 4d
+    section Verification & Release
+    Milestone 7 - Release Readiness       : m7, after m6, 3d
 ```
 
 ### Milestone 1: Authenticated Base Engine (Phases 01 - 02)
@@ -174,10 +177,15 @@ gantt
 - **Testing Checkpoint:** React testing library validation of auth state and room creation views.
 - **Intentionally Incomplete Work:** Chat screen is a basic textbox; no color-coded model bubbles, pause overlay, or @-mention helper.
 
-### Milestone 6: Live Orchestrator Workspace (Phase 10 - 11)
-- **Completed Functionality:** Full Chat Room interface, colored model-bubble alignment, pause-and-intervene warning deck, token audit metrics display.
-- **Demonstration Capability:** Fully interactive flow: create room mapping "Writer" to Gemini and "Reviewer" to Claude. Type `@Writer draft outline`. Watch outline stream in real-time. Pause flow. Add feedback `@Reviewer check schema`. Resume pipeline.
-- **Testing Checkpoint:** End-to-end Cypress/Playwright integration tests.
+### Milestone 6: Live Workspace & Dev Experience (Phases 10 - 11)
+- **Completed Functionality:** Full Chat Room interface, colored model-bubble alignment, pause-and-intervene warning deck, token audit metrics display, verified developer onboarding checklists, and environment startup diagnostics.
+- **Demonstration Capability:** Launch the application from a clean build environment following the onboarding checklist; verify that port drift and external services are correctly monitored.
+- **Testing Checkpoint:** Development environment diagnostics and port checks pass.
+
+### Milestone 7: Verified Release (Phase 12)
+- **Completed Functionality:** Automated E2E test coverage, verified project Learning engineering handbook, repository consistency checks, and a production-ready repository tagging.
+- **Demonstration Capability:** Execute automated Playwright E2E tests (`npm run test:e2e`) passing successfully. View complete engineering documentation index.
+- **Testing Checkpoint:** Playwright E2E integration test suite runs and passes.
 
 ---
 
@@ -191,4 +199,5 @@ gantt
   3. `Epic-03: Message Orchestrator & WS Transport` (Phases 06 - 08)
   4. `Epic-04: Client Dashboard & Socket Client` (Phase 09)
   5. `Epic-05: Collaborative Workspace UI` (Phase 10)
-  6. `Epic-06: Verification & Handover Audit` (Phase 11)
+  6. `Epic-06: Developer Experience Setup` (Phase 11)
+  7. `Epic-07: Verification & Handover Audit` (Phase 12)
