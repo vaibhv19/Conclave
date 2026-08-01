@@ -7,8 +7,10 @@ import com.conclave.domain.enums.SenderType;
 import com.conclave.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 
 @SpringBootTest
 @ActiveProfiles("dev")
@@ -43,10 +46,22 @@ class MessageOrchestratorTest {
     @Autowired
     private TokenUsageLogRepository tokenUsageLogRepository;
 
+    @MockBean
+    private org.springframework.ai.ollama.OllamaChatModel ollamaChatModel;
+
     private Room room;
 
     @BeforeEach
     void setUp() {
+        // Setup mock Ollama ChatModel responses
+        org.springframework.ai.chat.model.ChatResponse mockResponse = new org.springframework.ai.chat.model.ChatResponse(
+                List.of(new org.springframework.ai.chat.model.Generation("### Llama Analysis Review\nOptimized structure."))
+        );
+        Mockito.when(ollamaChatModel.call(any(org.springframework.ai.chat.prompt.Prompt.class)))
+                .thenReturn(mockResponse);
+        Mockito.when(ollamaChatModel.stream(any(org.springframework.ai.chat.prompt.Prompt.class)))
+                .thenReturn(reactor.core.publisher.Flux.just(mockResponse));
+
         User owner = User.builder()
                 .email("orchestrator-owner@example.com")
                 .name("Owner")
@@ -62,11 +77,11 @@ class MessageOrchestratorTest {
                 .build();
         room = roomRepository.save(room);
 
-        // Add Role Assignment for Lead-Writer
+        // Add Role Assignment for Lead-Writer mapped to local model LLAMA3
         RoleAssignment assignment = RoleAssignment.builder()
                 .room(room)
                 .roleName("Lead-Writer")
-                .modelId(ModelId.FAKE_OPENAI.name())
+                .modelId(ModelId.LLAMA3.name())
                 .uiColorHex("#FF5733")
                 .build();
         roleAssignmentRepository.save(assignment);
@@ -91,11 +106,11 @@ class MessageOrchestratorTest {
         assertNotNull(response);
         assertNotNull(response.getId());
         assertEquals("Lead-Writer", response.getRoleName());
-        assertEquals(ModelId.FAKE_OPENAI.name(), response.getModelId());
+        assertEquals(ModelId.LLAMA3.name(), response.getModelId());
         assertEquals(SenderType.AI, response.getSenderType());
-        assertTrue(response.getIsMocked());
+        assertFalse(response.getIsMocked());
         assertNotNull(response.getContent());
-        assertTrue(response.getContent().contains("OpenAI Analysis Review"));
+        assertTrue(response.getContent().contains("Llama Analysis Review"));
 
         // Verify history includes two messages: User + AI
         List<CanonicalMessage> history = messageRepository.findByRoomIdOrderByCreatedAtAsc(room.getId());

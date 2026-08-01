@@ -85,7 +85,7 @@ class RoomControllerIntegrationTest {
     void testCreateRoom_Success() throws Exception {
         RoleAssignmentDTO assignment = RoleAssignmentDTO.builder()
                 .roleName("Writer")
-                .modelId("GEMINI_PRO")
+                .modelId("LLAMA3")
                 .uiColorHex("#00FF00")
                 .build();
 
@@ -110,7 +110,7 @@ class RoomControllerIntegrationTest {
     void testCreateRoom_InvalidColor_BadRequest() throws Exception {
         RoleAssignmentDTO assignment = RoleAssignmentDTO.builder()
                 .roleName("Writer")
-                .modelId("GEMINI_PRO")
+                .modelId("LLAMA3")
                 .uiColorHex("#123") // Invalid color hex
                 .build();
 
@@ -131,13 +131,13 @@ class RoomControllerIntegrationTest {
     void testCreateRoom_DuplicateRoles_BadRequest() throws Exception {
         RoleAssignmentDTO assignment1 = RoleAssignmentDTO.builder()
                 .roleName("Writer")
-                .modelId("GEMINI_PRO")
+                .modelId("LLAMA3")
                 .uiColorHex("#00FF00")
                 .build();
 
         RoleAssignmentDTO assignment2 = RoleAssignmentDTO.builder()
                 .roleName("Writer") // Duplicate
-                .modelId("FAKE_CLAUDE")
+                .modelId("GEMMA")
                 .uiColorHex("#FF0000")
                 .build();
 
@@ -159,7 +159,7 @@ class RoomControllerIntegrationTest {
     void testGetRoomDetail_OwnerAccess_Success() throws Exception {
         RoleAssignmentDTO assignment = RoleAssignmentDTO.builder()
                 .roleName("Writer")
-                .modelId("GEMINI_PRO")
+                .modelId("LLAMA3")
                 .uiColorHex("#00FF00")
                 .build();
 
@@ -188,7 +188,7 @@ class RoomControllerIntegrationTest {
     void testGetRoomDetail_NonOwnerAccess_Forbidden() throws Exception {
         RoleAssignmentDTO assignment = RoleAssignmentDTO.builder()
                 .roleName("Writer")
-                .modelId("GEMINI_PRO")
+                .modelId("LLAMA3")
                 .uiColorHex("#00FF00")
                 .build();
 
@@ -218,7 +218,7 @@ class RoomControllerIntegrationTest {
     void testUpdateRoleAssignments_Success() throws Exception {
         RoleAssignmentDTO assignment = RoleAssignmentDTO.builder()
                 .roleName("Writer")
-                .modelId("GEMINI_PRO")
+                .modelId("LLAMA3")
                 .uiColorHex("#00FF00")
                 .build();
 
@@ -239,7 +239,7 @@ class RoomControllerIntegrationTest {
 
         RoleAssignmentDTO updatedAssignment = RoleAssignmentDTO.builder()
                 .roleName("Reviewer")
-                .modelId("FAKE_CLAUDE")
+                .modelId("GEMMA")
                 .uiColorHex("#0000FF")
                 .build();
 
@@ -250,6 +250,6 @@ class RoomControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.roleAssignments", hasSize(1)))
                 .andExpect(jsonPath("$.roleAssignments[0].roleName").value("Reviewer"))
-                .andExpect(jsonPath("$.roleAssignments[0].modelId").value("FAKE_CLAUDE"));
+                .andExpect(jsonPath("$.roleAssignments[0].modelId").value("GEMMA"));
     }
 }

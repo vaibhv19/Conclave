@@ -12,6 +12,7 @@ import com.conclave.repository.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -63,6 +64,9 @@ class ChatControllerIntegrationTest {
     @MockBean
     private SimpMessagingTemplate messagingTemplate;
 
+    @MockBean
+    private org.springframework.ai.ollama.OllamaChatModel ollamaChatModel;
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -81,6 +85,15 @@ class ChatControllerIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // Setup mock Ollama ChatModel responses
+        org.springframework.ai.chat.model.ChatResponse mockResponse = new org.springframework.ai.chat.model.ChatResponse(
+                List.of(new org.springframework.ai.chat.model.Generation("### Response text"))
+        );
+        Mockito.when(ollamaChatModel.call(any(org.springframework.ai.chat.prompt.Prompt.class)))
+                .thenReturn(mockResponse);
+        Mockito.when(ollamaChatModel.stream(any(org.springframework.ai.chat.prompt.Prompt.class)))
+                .thenReturn(reactor.core.publisher.Flux.just(mockResponse));
+
         owner = User.builder()
                 .email("chat-owner@example.com")
                 .name("Owner")
@@ -96,11 +109,11 @@ class ChatControllerIntegrationTest {
                 .build();
         room = roomRepository.save(room);
 
-        // Add Role Assignment for Lead-Writer -> FAKE_OPENAI
+        // Add Role Assignment for Lead-Writer -> LLAMA3
         RoleAssignment assignment = RoleAssignment.builder()
                 .room(room)
                 .roleName("Lead-Writer")
-                .modelId(ModelId.FAKE_OPENAI.name())
+                .modelId(ModelId.LLAMA3.name())
                 .uiColorHex("#4287f5")
                 .build();
         roleAssignmentRepository.save(assignment);
@@ -161,6 +174,6 @@ class ChatControllerIntegrationTest {
         assertEquals(2, finalHistory.size());
         assertEquals(SenderType.AI, finalHistory.get(1).getSenderType());
         assertEquals("Lead-Writer", finalHistory.get(1).getRoleName());
-        assertEquals(ModelId.FAKE_OPENAI.name(), finalHistory.get(1).getModelId());
+        assertEquals(ModelId.LLAMA3.name(), finalHistory.get(1).getModelId());
     }
 }

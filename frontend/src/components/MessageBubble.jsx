@@ -121,7 +121,7 @@ export default function MessageBubble({ message, roleColor = '#8b5cf6' }) {
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Adapter:</span>
-                                        <strong className="text-zinc-300">{message.isMocked ? 'Simulated' : 'VertexAI'}</strong>
+                                        <strong className="text-zinc-300">{message.isMocked ? 'Simulated' : 'Ollama'}</strong>
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Engine:</span>

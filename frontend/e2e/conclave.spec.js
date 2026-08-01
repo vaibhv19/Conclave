@@ -37,8 +37,8 @@ test.describe('Conclave E2E Flow', () => {
                         objective: 'Draft and review a slogan for a new AI workspace',
                         status: 'INITIALIZED',
                         roleAssignments: [
-                            { roleName: 'Lead-Writer', modelId: 'FAKE_OPENAI', uiColorHex: '#6366f1' },
-                            { roleName: 'Code-Critic', modelId: 'FAKE_CLAUDE', uiColorHex: '#f59e0b' }
+                            { roleName: 'Lead-Writer', modelId: 'LLAMA3', uiColorHex: '#6366f1' },
+                            { roleName: 'Code-Critic', modelId: 'MISTRAL', uiColorHex: '#f59e0b' }
                         ],
                         workflowState: {
                             currentDraft: '',
@@ -60,8 +60,8 @@ test.describe('Conclave E2E Flow', () => {
                     objective: 'Draft and review a slogan for a new AI workspace',
                     status: 'INITIALIZED',
                     roleAssignments: [
-                        { roleName: 'Lead-Writer', modelId: 'FAKE_OPENAI', uiColorHex: '#6366f1' },
-                        { roleName: 'Code-Critic', modelId: 'FAKE_CLAUDE', uiColorHex: '#f59e0b' }
+                        { roleName: 'Lead-Writer', modelId: 'LLAMA3', uiColorHex: '#6366f1' },
+                        { roleName: 'Code-Critic', modelId: 'MISTRAL', uiColorHex: '#f59e0b' }
                     ],
                     workflowState: {
                         currentDraft: 'Slogan: Orchestrate target model consensus.',

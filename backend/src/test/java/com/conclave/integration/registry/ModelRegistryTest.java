@@ -20,27 +20,23 @@ class ModelRegistryTest {
     void testRegistryResolvesAllSupportedModels() {
         assertNotNull(modelRegistry);
 
-        // 1. Verify GEMINI_PRO maps to fallback/live client
-        ChatClient geminiClient = modelRegistry.getClient(ModelId.GEMINI_PRO.name());
-        assertNotNull(geminiClient);
-        String geminiResponse = geminiClient.prompt().user("Hello").call().content();
-        assertNotNull(geminiResponse);
-        // Under dev/test profiles, this will fall back to our dummy model
-        assertTrue(geminiResponse.contains("Gemini Fallback") || geminiResponse.length() > 0);
+        // 1. Verify LLAMA3
+        ChatClient llamaClient = modelRegistry.getClient(ModelId.LLAMA3.name());
+        assertNotNull(llamaClient);
+        assertNotNull(modelRegistry.getChatModel(ModelId.LLAMA3.name()));
+        assertNotNull(modelRegistry.getAdapter(ModelId.LLAMA3.name()));
 
-        // 2. Verify FAKE_OPENAI maps to FakeOpenAiChatClient
-        ChatClient openAiClient = modelRegistry.getClient(ModelId.FAKE_OPENAI.name());
-        assertNotNull(openAiClient);
-        String openAiResponse = openAiClient.prompt().user("Hello").call().content();
-        assertNotNull(openAiResponse);
-        assertTrue(openAiResponse.contains("### OpenAI Analysis Review"));
+        // 2. Verify MISTRAL
+        ChatClient mistralClient = modelRegistry.getClient(ModelId.MISTRAL.name());
+        assertNotNull(mistralClient);
+        assertNotNull(modelRegistry.getChatModel(ModelId.MISTRAL.name()));
+        assertNotNull(modelRegistry.getAdapter(ModelId.MISTRAL.name()));
 
-        // 3. Verify FAKE_CLAUDE maps to FakeClaudeChatClient
-        ChatClient claudeClient = modelRegistry.getClient(ModelId.FAKE_CLAUDE.name());
-        assertNotNull(claudeClient);
-        String claudeResponse = claudeClient.prompt().user("Hello").call().content();
-        assertNotNull(claudeResponse);
-        assertTrue(claudeResponse.contains("### Claude Code Critique"));
+        // 3. Verify GEMMA
+        ChatClient gemmaClient = modelRegistry.getClient(ModelId.GEMMA.name());
+        assertNotNull(gemmaClient);
+        assertNotNull(modelRegistry.getChatModel(ModelId.GEMMA.name()));
+        assertNotNull(modelRegistry.getAdapter(ModelId.GEMMA.name()));
     }
 
     @Test

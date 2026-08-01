@@ -75,18 +75,18 @@ class TokenUsageLogServiceTest {
         TokenUsageLog logEntry = tokenUsageLogService.logUsage(
                 room.getId(),
                 message.getId(),
-                "FAKE_OPENAI",
+                "LLAMA3",
                 10,
                 20,
-                true
+                false
         );
 
         assertNotNull(logEntry);
         assertNotNull(logEntry.getId());
-        assertEquals("FAKE_OPENAI", logEntry.getModelId());
+        assertEquals("LLAMA3", logEntry.getModelId());
         assertEquals(10, logEntry.getPromptTokens());
         assertEquals(20, logEntry.getCompletionTokens());
-        assertTrue(logEntry.getIsMocked());
+        assertFalse(logEntry.getIsMocked());
         assertEquals(room.getId(), logEntry.getRoom().getId());
         assertEquals(message.getId(), logEntry.getMessage().getId());
 

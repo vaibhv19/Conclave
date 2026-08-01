@@ -1,5 +1,6 @@
 package com.conclave.integration.registry;
 
+import com.conclave.integration.adapter.ModelAdapter;
 import org.springframework.ai.chat.client.ChatClient;
 
 /**
@@ -22,4 +23,12 @@ public interface ModelRegistry {
      * @return The qualified ChatModel instance
      */
     org.springframework.ai.chat.model.ChatModel getChatModel(String modelId);
+
+    /**
+     * Retrieves the ModelAdapter instance associated with the given model ID.
+     *
+     * @param modelId The ID representing the model
+     * @return The qualified ModelAdapter instance
+     */
+    ModelAdapter getAdapter(String modelId);
 }

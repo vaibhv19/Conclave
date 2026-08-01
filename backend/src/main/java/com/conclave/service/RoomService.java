@@ -35,7 +35,7 @@ public class RoomService {
     private final RoleAssignmentRepository roleAssignmentRepository;
     private final WorkflowStateRepository workflowStateRepository;
 
-    private static final Set<String> SUPPORTED_MODELS = Set.of("GEMINI_PRO", "FAKE_OPENAI", "FAKE_CLAUDE");
+    private static final Set<String> SUPPORTED_MODELS = Set.of("LLAMA3", "MISTRAL", "GEMMA");
     private static final Pattern HEX_COLOR_PATTERN = Pattern.compile("^#[0-9A-Fa-f]{6}$");
 
     public RoomResponse createRoom(RoomCreateRequest request, User owner) {

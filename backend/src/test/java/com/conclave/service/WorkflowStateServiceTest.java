@@ -6,8 +6,10 @@ import com.conclave.domain.enums.SenderType;
 import com.conclave.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 
 @SpringBootTest
 @ActiveProfiles("dev")
@@ -36,11 +39,26 @@ class WorkflowStateServiceTest {
     @Autowired
     private CanonicalMessageRepository messageRepository;
 
+    @MockBean
+    private org.springframework.ai.ollama.OllamaChatModel ollamaChatModel;
+
     private Room room;
     private WorkflowState state;
 
     @BeforeEach
     void setUp() {
+        // Setup mock Ollama ChatModel responses
+        // We simulate a JSON response containing draft and comments from Llama 3 Janitor
+        String mockResponseJson = "{\n" +
+                "  \"currentDraft\": \"Compressed Slogan Draft\",\n" +
+                "  \"reviewComments\": \"Compressed Review Comments\"\n" +
+                "}";
+        org.springframework.ai.chat.model.ChatResponse mockResponse = new org.springframework.ai.chat.model.ChatResponse(
+                List.of(new org.springframework.ai.chat.model.Generation(mockResponseJson))
+        );
+        Mockito.when(ollamaChatModel.call(any(org.springframework.ai.chat.prompt.Prompt.class)))
+                .thenReturn(mockResponse);
+
         User owner = User.builder()
                 .email("janitor-owner@example.com")
                 .name("Owner")
@@ -120,8 +138,7 @@ class WorkflowStateServiceTest {
         // Verify WorkflowState was updated
         WorkflowState currentState = workflowStateService.getWorkflowState(room.getId());
         assertNotNull(currentState.getCurrentDraft());
-        // Since Gemini fallback is returning dummy/fake response in this active profile,
-        // we assert it has been updated with some non-empty value
-        assertFalse(currentState.getCurrentDraft().isEmpty());
+        assertEquals("Compressed Slogan Draft", currentState.getCurrentDraft());
+        assertEquals("Compressed Review Comments", currentState.getReviewComments());
     }
 }

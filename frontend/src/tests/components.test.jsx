@@ -31,14 +31,14 @@ describe('MessageBubble Component', () => {
             senderType: 'AI',
             content: 'Consensus draft **v1**',
             roleName: 'Lead-Writer',
-            modelId: 'FAKE_OPENAI',
-            isMocked: true
+            modelId: 'LLAMA3',
+            isMocked: false
         };
         const { container } = render(<MessageBubble message={message} roleColor="#ef4444" />);
 
         expect(container.firstChild).toHaveClass('items-start');
         expect(screen.getByText('Lead-Writer')).toBeInTheDocument();
-        expect(screen.getByText('FAKE_OPENAI')).toBeInTheDocument();
+        expect(screen.getByText('LLAMA3')).toBeInTheDocument();
         
         // Assert markdown bold rendering
         const boldElement = screen.getByText('v1');
@@ -51,7 +51,7 @@ describe('MessageBubble Component', () => {
             senderType: 'AI',
             content: 'Telemetry verification',
             roleName: 'Code-Critic',
-            modelId: 'GEMINI_PRO',
+            modelId: 'LLAMA3',
             isMocked: false
         };
         render(<MessageBubble message={message} />);
@@ -65,8 +65,8 @@ describe('MessageBubble Component', () => {
         // Simulate hover
         fireEvent.mouseEnter(infoButton);
         expect(screen.getByText('Agent Telemetry')).toBeInTheDocument();
-        expect(screen.getByText('VertexAI')).toBeInTheDocument();
-        expect(screen.getAllByText('GEMINI_PRO').length).toBe(2);
+        expect(screen.getByText('Ollama')).toBeInTheDocument();
+        expect(screen.getAllByText('LLAMA3').length).toBe(2);
 
         // Mouse leave hides the popup
         fireEvent.mouseLeave(infoButton);
@@ -84,8 +84,8 @@ describe('TurnIndicator Component', () => {
 
 describe('ChatBar Component', () => {
     const mockRoleAssignments = [
-        { roleName: 'Lead-Writer', modelId: 'FAKE_OPENAI', uiColorHex: '#ef4444' },
-        { roleName: 'Code-Critic', modelId: 'FAKE_CLAUDE', uiColorHex: '#f59e0b' }
+        { roleName: 'Lead-Writer', modelId: 'LLAMA3', uiColorHex: '#ef4444' },
+        { roleName: 'Code-Critic', modelId: 'MISTRAL', uiColorHex: '#f59e0b' }
     ];
 
     test('allows entering message and triggers submit callback', () => {
@@ -110,8 +110,8 @@ describe('ChatBar Component', () => {
         fireEvent.change(textarea, { target: { value: '@' } });
         
         expect(screen.getByText('Mention AI Role')).toBeInTheDocument();
-        expect(screen.getByText('FAKE_OPENAI')).toBeInTheDocument();
-        expect(screen.getByText('FAKE_CLAUDE')).toBeInTheDocument();
+        expect(screen.getByText('LLAMA3')).toBeInTheDocument();
+        expect(screen.getByText('MISTRAL')).toBeInTheDocument();
     });
 
     test('selecting role from popover inserts it into input text', () => {
@@ -122,7 +122,7 @@ describe('ChatBar Component', () => {
         
         // Find the button inside popover by looking for modelId text
         const roleButtons = screen.getAllByRole('button');
-        const popoverButton = roleButtons.find(btn => btn.textContent.includes('FAKE_OPENAI'));
+        const popoverButton = roleButtons.find(btn => btn.textContent.includes('LLAMA3'));
         fireEvent.click(popoverButton);
         
         expect(textarea.value).toBe('Write to @Lead-Writer ');

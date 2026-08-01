@@ -82,9 +82,9 @@ public class WorkflowStateServiceImpl implements WorkflowStateService {
                 formattedHistory
         );
 
-        // 3. Invoke Gemini summarizer client
-        ChatClient geminiClient = modelRegistry.getClient(ModelId.GEMINI_PRO.name());
-        String responseText = geminiClient.prompt().user(summarizerPrompt).call().content();
+        // 3. Invoke Llama 3 summarizer client
+        ChatClient llamaClient = modelRegistry.getClient(ModelId.LLAMA3.name());
+        String responseText = llamaClient.prompt().user(summarizerPrompt).call().content();
 
         // 4. Update state from response payload
         updateStateFromResponse(state, responseText);
@@ -131,7 +131,7 @@ public class WorkflowStateServiceImpl implements WorkflowStateService {
                 state.setReviewComments(map.get("reviewComments"));
             }
         } catch (Exception e) {
-            log.error("Failed to parse Gemini Janitor JSON response. Falling back to setting full response as draft.", e);
+            log.error("Failed to parse Llama 3 Janitor JSON response. Falling back to setting full response as draft.", e);
             state.setCurrentDraft(responseText);
             state.setReviewComments("JSON parsing failed. Review comments unresolved.");
         }

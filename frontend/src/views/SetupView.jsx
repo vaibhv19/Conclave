@@ -3,9 +3,9 @@ import { useRoomStore } from '../store/roomStore';
 import { useAuthStore } from '../store/authStore';
 
 const MODEL_OPTIONS = [
-    { value: 'GEMINI_PRO', label: 'Gemini 1.5 Pro (Google Vertex AI)' },
-    { value: 'FAKE_OPENAI', label: 'GPT-4o (Simulated / Mocked)' },
-    { value: 'FAKE_CLAUDE', label: 'Claude 3.5 Sonnet (Simulated / Mocked)' }
+    { value: 'LLAMA3', label: 'Llama 3 (Local Ollama)' },
+    { value: 'MISTRAL', label: 'Mistral (Local Ollama)' },
+    { value: 'GEMMA', label: 'Gemma (Local Ollama)' }
 ];
 
 const PRESET_COLORS = [
@@ -22,8 +22,8 @@ export default function SetupView() {
     const [name, setName] = useState('');
     const [objective, setObjective] = useState('');
     const [roles, setRoles] = useState([
-        { roleName: 'Lead-Writer', modelId: 'FAKE_OPENAI', uiColorHex: '#6366f1' },
-        { roleName: 'Code-Critic', modelId: 'FAKE_CLAUDE', uiColorHex: '#f59e0b' }
+        { roleName: 'Lead-Writer', modelId: 'LLAMA3', uiColorHex: '#6366f1' },
+        { roleName: 'Code-Critic', modelId: 'MISTRAL', uiColorHex: '#f59e0b' }
     ]);
 
     const { createRoom, loading, error, clearError } = useRoomStore();
@@ -32,7 +32,7 @@ export default function SetupView() {
     const handleAddRole = () => {
         setRoles([
             ...roles,
-            { roleName: `Reviewer-${roles.length + 1}`, modelId: 'FAKE_OPENAI', uiColorHex: PRESET_COLORS[roles.length % PRESET_COLORS.length] }
+            { roleName: `Reviewer-${roles.length + 1}`, modelId: 'LLAMA3', uiColorHex: PRESET_COLORS[roles.length % PRESET_COLORS.length] }
         ]);
     };
 

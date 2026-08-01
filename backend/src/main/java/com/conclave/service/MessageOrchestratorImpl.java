@@ -95,61 +95,27 @@ public class MessageOrchestratorImpl implements MessageOrchestrator {
                 .orElseThrow(() -> new ResourceNotFoundException("WorkflowState not found for room: " + roomId));
 
         // 6. Resolve Adapter & Client
-        ProviderAdapter adapter;
-        if (ModelId.GEMINI_PRO.name().equals(modelId)) {
-            adapter = new GeminiAdapter();
-        } else if (ModelId.FAKE_OPENAI.name().equals(modelId)) {
-            adapter = new OpenAiAdapter();
-        } else if (ModelId.FAKE_CLAUDE.name().equals(modelId)) {
-            adapter = new ClaudeAdapter();
-        } else {
-            throw new OrchestrationException("Unsupported modelId: " + modelId);
-        }
-
+        ModelAdapter adapter = modelRegistry.getAdapter(modelId);
         ChatClient chatClient = modelRegistry.getClient(modelId);
 
         // 7. Translate and Invoke LLM client
-        // Call adapter toProviderFormat to ensure validation and format matching
-        Object requestPayload = adapter.toProviderFormat(history, state);
-        log.debug("Translated context to provider format: {}", requestPayload);
+        // Call adapter toModelFormat to ensure validation and format matching
+        List<org.springframework.ai.chat.messages.Message> messages = adapter.toModelFormat(history, state);
+        log.debug("Translated context to model format: {}", messages);
 
-        // We invoke ChatClient using a Prompt containing the user message or consolidated history
-        ChatResponse chatResponse = chatClient.prompt(new Prompt(userMessageContent)).call().chatResponse();
+        // We invoke ChatClient using a Prompt containing the consolidated history
+        ChatResponse chatResponse = chatClient.prompt(new Prompt(messages)).call().chatResponse();
         if (chatResponse == null || chatResponse.getResult() == null || chatResponse.getResult().getOutput() == null) {
             throw new OrchestrationException("Model execution returned empty response");
         }
 
         String responseText = chatResponse.getResult().getOutput().getContent();
 
-        // Wrap response text in provider-specific response object for fromProviderFormat translation
-        Object responsePayload;
-        if (ModelId.GEMINI_PRO.name().equals(modelId)) {
-            responsePayload = GeminiAdapter.GeminiResponse.builder()
-                    .candidates(List.of(new GeminiAdapter.GeminiResponse.Candidate(
-                            new GeminiAdapter.Content("model", List.of(new GeminiAdapter.Part(responseText))),
-                            "STOP"
-                    )))
-                    .build();
-        } else if (ModelId.FAKE_OPENAI.name().equals(modelId)) {
-            responsePayload = OpenAiAdapter.OpenAiResponse.builder()
-                    .choices(List.of(new OpenAiAdapter.OpenAiResponse.Choice(
-                            0,
-                            new OpenAiAdapter.OpenAiMessage("assistant", responseText),
-                            "stop"
-                    )))
-                    .build();
-        } else {
-            responsePayload = ClaudeAdapter.ClaudeResponse.builder()
-                    .content(List.of(new ClaudeAdapter.ClaudeResponse.ContentBlock("text", responseText)))
-                    .model(modelId)
-                    .build();
-        }
-
-        CanonicalMessage aiResponse = adapter.fromProviderFormat(responsePayload);
+        CanonicalMessage aiResponse = adapter.fromModelFormat(responseText);
         aiResponse.setRoom(room);
         aiResponse.setRoleName(matchedAssignment.getRoleName());
         aiResponse.setModelId(modelId);
-        aiResponse.setIsMocked(!ModelId.GEMINI_PRO.name().equals(modelId));
+        aiResponse.setIsMocked(false); // All inference calls are real
         aiResponse.setCreatedAt(LocalDateTime.now());
 
         // Save AI response
@@ -176,7 +142,7 @@ public class MessageOrchestratorImpl implements MessageOrchestrator {
                 modelId,
                 promptTokens,
                 completionTokens,
-                aiResponse.getIsMocked()
+                false
         );
 
         // 9. Evaluate Context Compression
@@ -215,29 +181,19 @@ public class MessageOrchestratorImpl implements MessageOrchestrator {
                     .orElseThrow(() -> new OrchestrationException("No role assignment found matching role: " + roleName));
 
             String modelId = matchedAssignment.getModelId();
-            boolean isMocked = !ModelId.GEMINI_PRO.name().equals(modelId);
 
             // 2. Broadcast TURN_STARTED event
-            TurnStartedEvent startedEvent = new TurnStartedEvent(matchedAssignment.getRoleName(), modelId, isMocked);
+            TurnStartedEvent startedEvent = new TurnStartedEvent(matchedAssignment.getRoleName(), modelId, false);
             messagingTemplate.convertAndSend("/topic/room/" + roomId, startedEvent);
 
             // 3. Resolve Adapter
-            ProviderAdapter adapter;
-            if (ModelId.GEMINI_PRO.name().equals(modelId)) {
-                adapter = new GeminiAdapter();
-            } else if (ModelId.FAKE_OPENAI.name().equals(modelId)) {
-                adapter = new OpenAiAdapter();
-            } else if (ModelId.FAKE_CLAUDE.name().equals(modelId)) {
-                adapter = new ClaudeAdapter();
-            } else {
-                throw new OrchestrationException("Unsupported modelId: " + modelId);
-            }
+            ModelAdapter adapter = modelRegistry.getAdapter(modelId);
 
             // Load full history & WorkflowState for adapter translation validation
             List<CanonicalMessage> history = messageRepository.findByRoomIdOrderByCreatedAtAsc(roomId);
             WorkflowState state = workflowStateService.getWorkflowState(roomId);
-            Object requestPayload = adapter.toProviderFormat(history, state);
-            log.debug("Validated adapter request translation: {}", requestPayload);
+            List<org.springframework.ai.chat.messages.Message> messages = adapter.toModelFormat(history, state);
+            log.debug("Validated adapter request translation: {}", messages);
 
             // 4. Save placeholder AI message to obtain generated ID
             CanonicalMessage aiMessage = CanonicalMessage.builder()
@@ -245,7 +201,7 @@ public class MessageOrchestratorImpl implements MessageOrchestrator {
                     .senderType(SenderType.AI)
                     .roleName(matchedAssignment.getRoleName())
                     .modelId(modelId)
-                    .isMocked(isMocked)
+                    .isMocked(false)
                     .content("")
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -254,7 +210,7 @@ public class MessageOrchestratorImpl implements MessageOrchestrator {
 
             // Stream response from model
             ChatModel chatModel = modelRegistry.getChatModel(modelId);
-            Flux<ChatResponse> responseFlux = chatModel.stream(new Prompt(promptContent));
+            Flux<ChatResponse> responseFlux = chatModel.stream(new Prompt(messages));
 
             // Consume stream blocking-style since we are executing on a Virtual Thread
             Iterable<ChatResponse> chunks = responseFlux.toIterable();
@@ -290,31 +246,8 @@ public class MessageOrchestratorImpl implements MessageOrchestrator {
             String fullContent = fullContentBuilder.toString();
             log.info("AI response streaming complete. Reconstructed length: {}", fullContent.length());
 
-            // 5. Wrap response payload and convert back via adapter to validate format
-            Object responsePayload;
-            if (ModelId.GEMINI_PRO.name().equals(modelId)) {
-                responsePayload = GeminiAdapter.GeminiResponse.builder()
-                        .candidates(List.of(new GeminiAdapter.GeminiResponse.Candidate(
-                                new GeminiAdapter.Content("model", List.of(new GeminiAdapter.Part(fullContent))),
-                                "STOP"
-                        )))
-                        .build();
-            } else if (ModelId.FAKE_OPENAI.name().equals(modelId)) {
-                responsePayload = OpenAiAdapter.OpenAiResponse.builder()
-                        .choices(List.of(new OpenAiAdapter.OpenAiResponse.Choice(
-                                0,
-                                new OpenAiAdapter.OpenAiMessage("assistant", fullContent),
-                                "stop"
-                        )))
-                        .build();
-            } else {
-                responsePayload = ClaudeAdapter.ClaudeResponse.builder()
-                        .content(List.of(new ClaudeAdapter.ClaudeResponse.ContentBlock("text", fullContent)))
-                        .model(modelId)
-                        .build();
-            }
-
-            CanonicalMessage validatedMessage = adapter.fromProviderFormat(responsePayload);
+            // 5. Convert back via adapter to validate format
+            CanonicalMessage validatedMessage = adapter.fromModelFormat(fullContent);
             log.debug("Validated parsed message content: {}", validatedMessage.getContent());
 
             // Update the placeholder AI message with full content
@@ -333,7 +266,7 @@ public class MessageOrchestratorImpl implements MessageOrchestrator {
                     modelId,
                     promptTokens,
                     completionTokens,
-                    isMocked
+                    false
             );
 
             // 7. Context Janitor evaluation

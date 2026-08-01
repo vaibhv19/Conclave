@@ -62,7 +62,7 @@ class RoomServiceTest {
 
         RoleAssignmentDTO assignment = RoleAssignmentDTO.builder()
                 .roleName("Writer")
-                .modelId("GEMINI_PRO")
+                .modelId("LLAMA3")
                 .uiColorHex("#FF5733")
                 .build();
 
@@ -132,13 +132,13 @@ class RoomServiceTest {
     void testCreateRoom_DuplicateRoles_ThrowsException() {
         RoleAssignmentDTO assignment1 = RoleAssignmentDTO.builder()
                 .roleName("Writer")
-                .modelId("GEMINI_PRO")
+                .modelId("LLAMA3")
                 .uiColorHex("#FF5733")
                 .build();
 
         RoleAssignmentDTO assignment2 = RoleAssignmentDTO.builder()
                 .roleName("Writer") // Duplicate
-                .modelId("FAKE_OPENAI")
+                .modelId("MISTRAL")
                 .uiColorHex("#00FF00")
                 .build();
 
@@ -196,7 +196,7 @@ class RoomServiceTest {
 
         RoleAssignmentDTO newAssignment = RoleAssignmentDTO.builder()
                 .roleName("Reviewer")
-                .modelId("FAKE_CLAUDE")
+                .modelId("GEMMA")
                 .uiColorHex("#123456")
                 .build();
 

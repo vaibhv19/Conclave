@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -74,6 +75,9 @@ class PipelineSequentialIntegrationTest {
     @MockBean
     private SimpMessagingTemplate messagingTemplate;
 
+    @MockBean
+    private org.springframework.ai.ollama.OllamaChatModel ollamaChatModel;
+
     private User owner;
     private User intruder;
     private String ownerToken;
@@ -82,6 +86,15 @@ class PipelineSequentialIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // Setup mock Ollama ChatModel responses
+        org.springframework.ai.chat.model.ChatResponse mockResponse = new org.springframework.ai.chat.model.ChatResponse(
+                List.of(new org.springframework.ai.chat.model.Generation("### Response text"))
+        );
+        Mockito.when(ollamaChatModel.call(any(org.springframework.ai.chat.prompt.Prompt.class)))
+                .thenReturn(mockResponse);
+        Mockito.when(ollamaChatModel.stream(any(org.springframework.ai.chat.prompt.Prompt.class)))
+                .thenReturn(reactor.core.publisher.Flux.just(mockResponse));
+
         tokenUsageLogRepository.deleteAll();
         messageRepository.deleteAll();
         workflowStateRepository.deleteAll();
@@ -115,11 +128,11 @@ class PipelineSequentialIntegrationTest {
         room.setPipelineSequenceList(List.of("Lead-Writer", "Code-Critic"));
         room = roomRepository.save(room);
 
-        // Assign Lead-Writer and Code-Critic to Fake Openai/Claude
+        // Assign Lead-Writer and Code-Critic to local models LLAMA3 and MISTRAL
         RoleAssignment writer = RoleAssignment.builder()
                 .room(room)
                 .roleName("Lead-Writer")
-                .modelId(ModelId.FAKE_OPENAI.name())
+                .modelId(ModelId.LLAMA3.name())
                 .uiColorHex("#ff0000")
                 .build();
         roleAssignmentRepository.save(writer);
@@ -127,7 +140,7 @@ class PipelineSequentialIntegrationTest {
         RoleAssignment critic = RoleAssignment.builder()
                 .room(room)
                 .roleName("Code-Critic")
-                .modelId(ModelId.FAKE_CLAUDE.name())
+                .modelId(ModelId.MISTRAL.name())
                 .uiColorHex("#0000ff")
                 .build();
         roleAssignmentRepository.save(critic);
@@ -189,7 +202,7 @@ class PipelineSequentialIntegrationTest {
         room.setStatus(RoomStatus.ACTIVE);
         roomRepository.save(room);
 
-        // Intruder tries to pause -> 403 Forbidden / 401 Unauthorized depending on mapping
+        // Intruder tries to pause -> 403 Forbidden
         mockMvc.perform(post("/api/chat/pipeline/pause")
                         .header("Authorization", "Bearer " + intruderToken)
                         .contentType(MediaType.APPLICATION_JSON)
