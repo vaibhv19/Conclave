@@ -6,7 +6,7 @@ This document defines the high-level system architecture, layout component trees
 
 ## 1. System Topology Overview
 
-The Conclave platform consists of a single-page React frontend and a monolithic Spring Boot backend. The system orchestrates multiple AI model wrappers while maintaining state consistency via relational databases and WebSocket message streams.
+The Conclave platform consists of a single-page React frontend and a monolithic Spring Boot backend. The system orchestrates multiple local AI model instances while maintaining state consistency via relational databases and WebSocket message streams.
 
 ```mermaid
 graph TB
@@ -40,10 +40,8 @@ graph TB
         DB[(PostgreSQL Database)]
     end
 
-    subgraph "LLM Providers"
-        Gemini[Vertex AI Gemini API]
-        MockOpenAI[Fake OpenAI Client]
-        MockClaude[Fake Claude Client]
+    subgraph "LLM Infrastructure"
+        Ollama[Local Ollama Server]
     end
 
     %% Network / Protocol connections
@@ -68,9 +66,7 @@ graph TB
     Janitor -->|Purge & Summarize| DB
 
     %% API Integrations
-    Adapter --> Gemini
-    Adapter --> MockOpenAI
-    Adapter --> MockClaude
+    Adapter --> Ollama
 ```
 
 ---
@@ -89,7 +85,7 @@ App.jsx (Router & Session Gate)
       └── Splitter Panel Layout (100% Height Flex Split)
            ├── Sidebar.jsx (Left panel: Objective description, Consensus Draft, telemetry stats)
            └── Main Chat Area (Center: Chronological message board)
-                ├── MessageBubble.jsx (Model color-coded text, timestamp, and mock indicator)
+                ├── MessageBubble.jsx (Model color-coded text, timestamp, and model tag)
                 ├── TurnIndicator.jsx (Model status indicator orb)
                 └── ChatBar.jsx (Command entry textarea and popover mention selector)
 ```
@@ -102,7 +98,7 @@ Entity relationships map to the database schema defined in `DB_Schema.md`. The S
 
 *   **`User` (1 : N) `Room`:** A user owns multiple collaborative rooms. Deleting a user cascadingly deletes their rooms.
 *   **`Room` (1 : 1) `WorkflowState`:** Each room maintains exactly one active task state containing the unified summary (`current_draft`, `review_comments`).
-*   **`Room` (1 : N) `RoleAssignment`:** Mappings linking custom roles (e.g. "Code Reviewer") to specific model keys (e.g. `FAKE_CLAUDE`) per workspace. An index enforces uniqueness on the composite key `(room_id, role_name)`.
+*   **`Room` (1 : N) `RoleAssignment`:** Mappings linking custom roles (e.g. "Code Reviewer") to specific model keys (e.g. `llama3`, `mistral`, `gemma`) per workspace. An index enforces uniqueness on the composite key `(room_id, role_name)`.
 *   **`Room` (1 : N) `CanonicalMessage`:** Represents the chronological record of the conversation. Ordered via `created_at` timestamp index.
 *   **`Room` (1 : N) `TokenUsageLog`:** Metrics record for room consumption reports. Enables query aggregations on prompt and generation tokens.
 
@@ -110,7 +106,7 @@ Entity relationships map to the database schema defined in `DB_Schema.md`. The S
 
 ## 4. Concurrency & Locking Strategy
 
-Handling slow, blocking, multi-vendor LLM calls alongside real-time user commands requires a robust concurrency design to prevent thread starvation and race conditions.
+Handling slow, blocking, local model LLM calls alongside real-time user commands requires a robust concurrency design to prevent thread starvation and race conditions.
 
 ```
    [ Concurrent Session API Call Lifecycle ]
@@ -121,15 +117,15 @@ Handling slow, blocking, multi-vendor LLM calls alongside real-time user command
                                   │    * Tomcat carrier-thread immediately released back to pool.
                                   │
                                   └──> Virtual Thread executes executeStreamingTurnAsync()
-                                       * Blocking call to Gemini/Mock API.
+                                       * Blocking call to local Ollama API.
                                        * JVM unmounts virtual thread from carrier thread.
                                        * Carrier thread remains free to handle incoming requests.
                                        * Once I/O response chunk arrives, virtual thread remounts.
 ```
 
 ### 4.1 Tomcat Carrier Protection: Java 21 Virtual Threads
-*   **The Problem:** Standard Spring Boot servers allocate one OS thread per request. If multiple rooms are simultaneously streaming responses from slow LLM APIs (which can take seconds), all Tomcat worker threads can quickly become blocked, causing the server to hang.
-*   **The Solution:** Conclave configures a custom `AsyncTaskExecutor` backed by **Virtual Threads** (`Executors.newVirtualThreadPerTaskExecutor()`). When a turn executes, the worker thread delegates the task to this executor and immediately returns to Tomcat's pool. During slow blocking calls (such as streaming from Gemini Pro), the JVM unmounts the virtual thread, freeing the underlying OS carrier thread to process other incoming traffic.
+*   **The Problem:** Standard Spring Boot servers allocate one OS thread per request. If multiple rooms are simultaneously streaming responses from local LLM APIs (which can take several seconds depending on model size and VRAM availability), all Tomcat worker threads can quickly become blocked, causing the server to hang.
+*   **The Solution:** Conclave configures a custom `AsyncTaskExecutor` backed by **Virtual Threads** (`Executors.newVirtualThreadPerTaskExecutor()`). When a turn executes, the worker thread delegates the task to this executor and immediately returns to Tomcat's pool. During blocking calls (such as streaming from a local `llama3` model), the JVM unmounts the virtual thread, freeing the underlying OS carrier thread to process other incoming traffic.
 
 ### 4.2 State Safety: Pessimistic Database Locking
 *   **The Problem:** During sequential pipelines (e.g., Model A &rarr; Model B), a user might click "Pause" or type an "Intervention" message at the exact moment a model response is completing. This can cause race conditions where both threads try to update the room status, objective, or index simultaneously, leading to state inconsistencies.
