@@ -54,8 +54,8 @@ Signals to all clients that a specific model has begun processing a prompt.
     {
       "type": "TURN_STARTED",
       "roleName": "Critic",
-      "modelId": "FAKE_CLAUDE",
-      "isMocked": true
+      "modelId": "mistral",
+      "isMocked": false
     }
     ```
 *   **UI Impact:** React sets the active typing status for the Critic, triggering a pulsing typing indicator bubble in the chat view.
