@@ -22,7 +22,7 @@ Docs/
 ├── System_Architecture.md                  # High-level architecture, flow paths, JPA classes
 ├── DB_Schema.md                            # Relational schema, indices, pessimistic locks
 ├── API_Specification.md                    # REST endpoint details & STOMP socket payloads
-├── Security_Architecture.md                # JWT Filters, token structures, socket interceptors
+├── Security.md                             # JWT Filters, token structures, socket interceptors
 ├── WebSocket_Architecture.md               # WebSocket topics, message envelope formats
 ├── Error_Handling_Strategy.md              # Global exception handler & recovery procedures
 ├── Testing_Strategy.md                     # Verification matrix (Unit, Integration, E2E)
@@ -56,7 +56,7 @@ Depending on your role and objectives, we recommend reading the documentation in
     1.  [Docs/System_Architecture.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/System_Architecture.md) (High-level topology & classes)
     2.  [Docs/DB_Schema.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/DB_Schema.md) (Pessimistic locking & entity maps)
     3.  [Docs/WebSocket_Architecture.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/WebSocket_Architecture.md) (Real-time message routing)
-    4.  [Docs/Security_Architecture.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Security_Architecture.md) (JWT & handshake filters)
+    4.  [Docs/Security.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Security.md) (JWT & handshake filters)
 *   **For Interview & Defense Preparation:**
     1.  [Docs/Portfolio_And_Interview_Readiness_Defense.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Portfolio_And_Interview_Readiness_Defense.md) (Systems design FAQs)
 
@@ -71,7 +71,7 @@ Use the table below to navigate directly to individual files in this directory:
 | :--- | :--- | :--- |
 | **System Architecture** | [System_Architecture.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/System_Architecture.md) | High-level system structure, database design, and sequence diagrams. |
 | **Database Schema** | [DB_Schema.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/DB_Schema.md) | JPA entity mappings, database indexes, and pessimistic write lock details. |
-| **Security Architecture** | [Security_Architecture.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Security_Architecture.md) | JWT payload structure, WebSocket handshake security, and REST endpoint authorization. |
+| **Security Architecture** | [Security.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Security.md) | JWT payload structure, WebSocket handshake security, and REST endpoint authorization. |
 | **WebSocket Broker** | [WebSocket_Architecture.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/WebSocket_Architecture.md) | STOMP routing configurations, client reconnect rules, and socket frame types. |
 | **Model Adapter Pattern** | [Model_Adapter_Strategy.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Model_Adapter_Strategy.md) | Token templates and format specs for Llama 3, Mistral, and Gemma models. |
 | **UI Design Tokens** | [UI_Design.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/UI_Design.md) | Component hierarchy and color codes for Slate surface elevations Level 0-3. |

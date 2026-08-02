@@ -124,7 +124,7 @@ Conclave/
 │   ├── System_Architecture.md              # Class diagrams, JPA mappings, execution flow
 │   ├── DB_Schema.md                        # ER diagrams, pessimistic locking, index designs
 │   ├── API_Specification.md                # Endpoint specs, WebSocket STOMP payload schemas
-│   ├── Security_Architecture.md            # JWT details, WebSocket auth interceptor flow
+│   ├── Security.md                         # JWT details, WebSocket auth interceptor flow
 │   ├── Error_Handling_Strategy.md          # Global Exception Handler and recovery flow
 │   ├── WebSocket_Architecture.md           # Message routing and fallback retry strategies
 │   ├── Testing_Strategy.md                 # Validation matrix across all project tiers
@@ -252,7 +252,7 @@ Use the table below to navigate to the core documentation modules:
 | **Product Requirements** | [Docs/PRD.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/PRD.md) | Vision, target audience, features list, and constraints. |
 | **System Architecture** | [Docs/System_Architecture.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/System_Architecture.md) | High-level system structure, database design, and sequence diagrams. |
 | **Database Schema** | [Docs/DB_Schema.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/DB_Schema.md) | Entity relationships, pessimistic lock descriptions, and indices. |
-| **Security Architecture** | [Docs/Security_Architecture.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Security_Architecture.md) | Stateless JWT security, WebSocket handshake, and endpoint authority. |
+| **Security Architecture** | [Docs/Security.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Security.md) | Stateless JWT security, WebSocket handshake, and endpoint authority. |
 | **Engineering Handbook** | [Docs/Learning/README.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/README.md) | 9-chapter onboarding curriculum covering specific backend/frontend implementations. |
 | **Implementation Roadmap** | [Docs/Roadmap/README.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/README.md) | 12 atomic phases and milestones for building Conclave. |
 
@@ -277,3 +277,9 @@ Contributions are welcome. Please ensure that:
 ## 🏆 Acknowledgements
 *   **Spring Boot & Spring AI teams** for simplifying local model clients.
 *   **Ollama project** for enabling lightweight local model inference.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
