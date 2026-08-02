@@ -75,30 +75,55 @@ export const useChatStore = create((set, get) => ({
 
     handleContentChunk: (event) => {
         const { thinkingMessageId } = get();
-        const targetId = event.messageId || thinkingMessageId;
-        if (!targetId) return;
+        const realId = event.messageId;
+        if (!realId && !thinkingMessageId) return;
 
-        set((state) => ({
-            messages: state.messages.map(m =>
-                m.id === targetId ? { ...m, content: (m.content || '') + event.chunk, isThinking: false } : m
-            )
-        }));
+        set((state) => {
+            let updated = false;
+            const messages = state.messages.map(m => {
+                if (m.id === realId || (m.id === thinkingMessageId && !updated)) {
+                    updated = true;
+                    const chunkText = event.chunk || event.delta || '';
+                    return {
+                        ...m,
+                        id: realId || m.id,
+                        content: (m.content || '') + chunkText,
+                        isThinking: false
+                    };
+                }
+                return m;
+            });
+            return { messages };
+        });
     },
 
     handleTurnCompleted: (event, activeRoomId) => {
         const { thinkingMessageId } = get();
-        const targetId = event.messageId || thinkingMessageId;
+        const realId = event.messageId;
 
-        set((state) => ({
-            thinkingMessageId: null,
-            messages: state.messages.map(m =>
-                m.id === targetId ? { ...m, content: event.summary, isThinking: false } : m
-            ),
-            tokenUsage: {
-                promptTokens: event.usage?.promptTokens || 0,
-                completionTokens: event.usage?.completionTokens || 0
-            }
-        }));
+        set((state) => {
+            let updated = false;
+            const messages = state.messages.map(m => {
+                if (m.id === realId || (m.id === thinkingMessageId && !updated)) {
+                    updated = true;
+                    return {
+                        ...m,
+                        id: realId || m.id,
+                        content: event.summary,
+                        isThinking: false
+                    };
+                }
+                return m;
+            });
+            return {
+                thinkingMessageId: null,
+                messages,
+                tokenUsage: {
+                    promptTokens: event.usage?.promptTokens || 0,
+                    completionTokens: event.usage?.completionTokens || 0
+                }
+            };
+        });
 
         // Fetch updated Room status, role assignments, and WorkflowState draft summaries
         if (activeRoomId) {

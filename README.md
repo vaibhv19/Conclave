@@ -29,6 +29,19 @@ Outgoing history is dynamically mapped to the target vendor's API format at runt
 
 ## 📸 Workspace Showcase
 
+### 1. Interactive Application Flows
+Here is the step-by-step visual workflow of the Conclave Console, from authentication to room configuration:
+
+| 🔐 Login & Authentication Portal | 🛠️ Room Configuration Wizard |
+| :---: | :---: |
+| ![Login Page](frontend/src/assets/conclave_login.png) | ![Room Creation Wizard](frontend/src/assets/conclave_room_creation.png) |
+
+### 2. Live E2E Multi-Agent Slogan Generation Run
+Below is the actual visual verification of a completed E2E multi-agent execution run. It shows a user prompt triggering a sequential chain of local LLM responses from Llama 3 (`Lead-Writer`) and Mistral (`Code-Critic`) streaming in real-time over WebSockets:
+
+![Live E2E Multi-Agent Slogan Generation Run](frontend/src/assets/live_usecase_chat_conclave.png)
+
+### 3. Conclave Console Dashboard Mockup
 Below is a mockup of the Conclave Console, showcasing the multi-agent room layout with color-coded message bubbles and the pause control desk:
 
 ![Conclave Dashboard Mockup](frontend/src/assets/conclave_dashboard_mockup.png)
