@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/conclave_db}
-    username: ${DB_USER:conclave_user}
-    password: ${DB_PASSWORD:conclave_password}
+    url: jdbc:postgresql://localhost:5432/conclave_db
+    username: conclave_user
+    password: conclave_password
     driver-class-name: org.postgresql.Driver
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
@@ -15,8 +15,7 @@ spring:
 
   ai:
     ollama:
-      base-url: ${SPRING_AI_OLLAMA_BASE_URL:http://localhost:11434}
+      base-url: http://localhost:11434
       chat:
         options:
           model: llama3
-

@@ -35,7 +35,7 @@ backend/src/main/java/com/conclave/
 
 #### 1. `TURN_STARTED` (Broadcaster event)
 - Triggered before invoking `ChatClient`.
-- Payload: `{ type: "TURN_STARTED", roleName: "Code-Critic", modelId: "FAKE_CLAUDE", isMocked: true }`
+- Payload: `{ type: "TURN_STARTED", roleName: "Code-Critic", modelId: "MISTRAL", isMocked: false }`
 
 #### 2. `CONTENT_CHUNK` (Broadcaster event)
 - Triggered for each text delta.

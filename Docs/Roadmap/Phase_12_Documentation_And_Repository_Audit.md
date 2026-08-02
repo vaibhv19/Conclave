@@ -13,7 +13,7 @@ Docs/
 └── Learning/
     ├── 01_Developer_Environment_Setup.md
     ├── 02_JWT_Authentication_Strategy.md
-    ├── 03_Provider_Adapter_Pattern.md
+    ├── 03_Model_Adapter_Pattern.md
     ├── 04_Model_Registry_And_Ollama_Clients.md
     ├── 05_Context_Compression_And_Janitor_Service.md
     ├── 06_WebSocket_Realtime_Streaming_With_STOMP.md
@@ -46,7 +46,7 @@ The `Learning/` folder functions as a complete internal engineering handbook. Th
 | :--- | :--- | :--- | :--- |
 | **01** | [Developer Environment Setup](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/01_Developer_Environment_Setup.md) | Local bootstrapping & credentials | root environment, `docker-compose.yml` |
 | **02** | [JWT Authentication Strategy](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/02_JWT_Authentication_Strategy.md) | Stateless security filters & token scopes | `com.conclave.security`, `com.conclave.controller.AuthController` |
-| **03** | [Model Adapter Pattern](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Provider_Adapter_Pattern.md) | Multi-vendor schema translation | `com.conclave.integration.adapter` |
+| **03** | [Model Adapter Pattern](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Model_Adapter_Pattern.md) | Multi-vendor schema translation | `com.conclave.integration.adapter` |
 | **04** | [Model Registry & Ollama Clients](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/04_Model_Registry_And_Ollama_Clients.md) | Bean resolution & Ollama model clients | `com.conclave.integration.registry` |
 | **05** | [Context Compression & Janitor Service](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/05_Context_Compression_And_Janitor_Service.md) | Token savings & DB message purges | `com.conclave.service.WorkflowStateService` |
 | **06** | [WebSocket Real-time Streaming with STOMP](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/06_WebSocket_Realtime_Streaming_With_STOMP.md) | Async STOMP publishing & socket security | `com.conclave.config.WebSocketConfig`, `com.conclave.controller.ChatController` |
@@ -55,8 +55,8 @@ The `Learning/` folder functions as a complete internal engineering handbook. Th
 | **09** | [Tailwind Customization for Tactical UIs](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/09_Tailwind_Customization_For_Tactical_UIs.md) | Color-coded role themes & warning canvas layouts | `frontend/tailwind.config.js`, `frontend/src/components/MessageBubble.jsx` |
 
 ### 2.2 Handbook Cross-Reference Mapping
-- [03_Model_Adapter_Pattern](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Provider_Adapter_Pattern.md) cross-references [04_Model_Registry_And_Ollama_Clients](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/04_Model_Registry_And_Ollama_Clients.md) to explain adapter validation in Ollama clients.
-- [05_Context_Compression_And_Janitor_Service](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/05_Context_Compression_And_Janitor_Service.md) links back to [03_Provider_Adapter_Pattern](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Provider_Adapter_Pattern.md) to show how compressed DTOs are mapped by the adapters.
+- [03_Model_Adapter_Pattern](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Model_Adapter_Pattern.md) cross-references [04_Model_Registry_And_Ollama_Clients](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/04_Model_Registry_And_Ollama_Clients.md) to explain adapter validation in Ollama clients.
+- [05_Context_Compression_And_Janitor_Service](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/05_Context_Compression_And_Janitor_Service.md) links back to [03_Model_Adapter_Pattern](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Model_Adapter_Pattern.md) to show how compressed DTOs are mapped by the adapters.
 - [07_Pause_And_Intervene_Pipeline_Locking](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/07_Pause_And_Intervene_Pipeline_Locking.md) links to [06_WebSocket_Realtime_Streaming_With_STOMP](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/06_WebSocket_Realtime_Streaming_With_STOMP.md) to explain the `SYSTEM_INTERVENTION` event broadcast mechanics during sequential pauses.
 - [08_Zustand_State_Synchronization_With_WebSockets](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/08_Zustand_State_Synchronization_With_WebSockets.md) references [06_WebSocket_Realtime_Streaming_With_STOMP](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/06_WebSocket_Realtime_Streaming_With_STOMP.md) to maintain symmetry between backend event emitters and frontend subscribers.
 
@@ -73,7 +73,7 @@ Ensure all repository documentation contains no outdated information, placeholde
   - Points correctly to `/Docs/Roadmap/` and `/Docs/Learning/` indexes.
   - Displays high-level architecture diagram showing REST & WebSocket connections.
 - [ ] **Backend README.md Verification:**
-  - Explains how to set up environmental variables (e.g. Gemini Vertex keys).
+  - Explains how to set up environmental variables (e.g. Ollama settings).
   - Documents Maven compile, unit test, and integration test triggers.
   - Contains database initialization and migrations (Hibernate properties configuration).
 - [ ] **Frontend README.md Verification:**
@@ -105,7 +105,7 @@ The objective of the consistency review is to verify that the repository reads a
   - DB status mappings and API payloads must use synchronized Enums:
     - Room Status: `INITIALIZED`, `ACTIVE`, `PAUSED`, `ARCHIVED` (maps to `rooms.status` column and `RoomResponse.status`).
     - Message Sender Type: `USER`, `AI`, `SYSTEM` (maps to `conversation_history.sender_type` column and `MessageResponse.senderType`).
-    - Model IDs: `GEMINI_PRO`, `FAKE_OPENAI`, `FAKE_CLAUDE` (maps to `role_assignments.model_id` column and `RoleAssignmentDTO.modelId`).
+    - Model IDs: `LLAMA3`, `MISTRAL`, `GEMMA` (maps to `role_assignments.model_id` column and `RoleAssignmentDTO.modelId`).
 
 ---
 
@@ -136,8 +136,8 @@ This guide ensures every major architectural decision can be defended under tech
 
 | Architecture Decision | Interviewer Core Question | Strategic Defense & Rationale | Clickable Class Link | Learning Document Reference |
 | :--- | :--- | :--- | :--- | :--- |
-| **Adapter Pattern** | Why not write standard if-else blocks inside the main Chat controller? | Separates core orchestration logic from model template changes. Adding models requires a new adapter without touching controllers. | [ModelAdapter](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/adapter/ModelAdapter.java) | [03_Model_Adapter_Pattern](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Provider_Adapter_Pattern.md) |
-| **Canonical Message Model** | Why persist history in a unified shape instead of caching JSON responses? | Avoids vendor lock-in. A shared database history allows re-prompting any model with context generated by competitors. | [CanonicalMessage](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/domain/CanonicalMessage.java) | [03_Provider_Adapter_Pattern](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Provider_Adapter_Pattern.md) |
+| **Adapter Pattern** | Why not write standard if-else blocks inside the main Chat controller? | Separates core orchestration logic from model template changes. Adding models requires a new adapter without touching controllers. | [ModelAdapter](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/adapter/ModelAdapter.java) | [03_Model_Adapter_Pattern](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Model_Adapter_Pattern.md) |
+| **Canonical Message Model** | Why persist history in a unified shape instead of caching JSON responses? | Avoids vendor lock-in. A shared database history allows re-prompting any model with context generated by competitors. | [CanonicalMessage](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/domain/CanonicalMessage.java) | [03_Model_Adapter_Pattern](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Model_Adapter_Pattern.md) |
 | **Ollama Clients** | Why route calls through a local daemon instead of public APIs? | Provides 100% offline private execution with zero API token costs. Exercises local prompt template tokenization. | [OllamaChatModelWrapper](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/registry/OllamaChatModelWrapper.java) | [04_Model_Registry_And_Ollama_Clients](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/04_Model_Registry_And_Ollama_Clients.md) |
 | **WorkflowState** | Why summarize context instead of sending complete history logs? | Reduces API costs and prevents context-window saturation. Compresses long logs while maintaining target objectives. | [WorkflowState](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/domain/WorkflowState.java) | [05_Context_Compression_And_Janitor_Service](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/05_Context_Compression_And_Janitor_Service.md) |
 | **Pessimistic Locking** | Why use Pessimistic DB Locks on Pipeline transitions? | Prevents race conditions. If a user interrupts (pauses) while a model completion is saving, the lock halts next-step execution. | [PipelineManager](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/service/PipelineManager.java) | [07_Pause_And_Intervene_Pipeline_Locking](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/07_Pause_And_Intervene_Pipeline_Locking.md) |

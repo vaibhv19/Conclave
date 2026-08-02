@@ -9,7 +9,7 @@ This document defines the visual rules, layout architecture, typography scales, 
 Conclave's brand identity represents its core function: **multi-agent LLM consensus orchestration**. 
 
 ```
-          [Dasheed Orbital Ring]   --->  Represents independent AI engines (Gemini, Claude, GPT)
+          [Dasheed Orbital Ring]   --->  Represents independent AI engines (Llama, Mistral, Gemma)
                 *  *  *  *
              *     /\     *
             *    /    \    *

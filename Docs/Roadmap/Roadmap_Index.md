@@ -2,7 +2,7 @@
 
 Welcome to the **Conclave** Implementation Roadmap. This document serves as the master index and architectural guide for building Conclave sequentially. 
 
-Conclave is a multi-provider context unification platform that orchestrates real-time, shared-context discussions between a human and multiple LLMs (such as Google Gemini, OpenAI, and Anthropic Claude) in a single virtual "meeting room."
+Conclave is a multi-agent context unification platform that orchestrates real-time, shared-context discussions between a human and multiple local LLM models (such as Llama 3, Mistral, and Gemma) in a single virtual "meeting room."
 
 ---
 
@@ -46,7 +46,7 @@ To preserve SOLID design and Clean Architecture principles, Conclave separates c
   - `service/`: Core logic:
     - `AuthService`: Authentication, user management, and token generation.
     - `RoomService`: Room initialization, role assignments validation, and persistence.
-    - `WorkflowStateService`: Compresses history, invokes Gemini "Janitor" for summary, maintains `WorkflowState` database.
+    - `WorkflowStateService`: Compresses history, invokes Llama 3 "Janitor" for summary, maintains `WorkflowState` database.
     - `MessageOrchestrator`: Multi-model sequential queue processing, role-to-model resolution, and token logging.
   - `controller/`: REST controllers (`AuthController`, `RoomController`, `ChatController`).
   - `websocket/`: STOMP event dispatchers and configuration.
@@ -115,8 +115,8 @@ The implementation is divided into **12 sequential, atomic development phases**.
 | **02** | [Authentication & Domain](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_02_Authentication_And_Domain.md) | Schema design & REST auth | Database models, Spring JPA repositories, Spring Security JWT flow |
 | **03** | [Room Management API](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_03_Room_Management.md) | Setup space configuration | `Room` endpoints, role mappings validation, config persistence |
 | **04** | [Model Adapter Layer](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_04_Model_Adapter_Layer.md) | Context translation contracts | `ModelAdapter` interfaces, Llama/Mistral/Gemma prompt templates |
-| **05** | [LLM Clients & Model Registry](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_05_LLM_Clients_And_Registry.md) | Vertex AI & Mock engines | Vertex AI binding, Fake chat clients with simulated latency, Registry |
-| **06** | [Orchestration & WorkflowState](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_06_Orchestration_And_WorkflowState.md) | Session orchestration | `MessageOrchestrator`, Gemini Janitor summarization, Token logs |
+| **05** | [LLM Clients & Model Registry](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_05_LLM_Clients_And_Registry.md) | Ollama Integration & Model Registry | Spring AI Ollama configuration, Wrapper delegate, Registry |
+| **06** | [Orchestration & WorkflowState](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_06_Orchestration_And_WorkflowState.md) | Session orchestration | `MessageOrchestrator`, Llama 3 Janitor summarization, Token logs |
 | **07** | [WebSocket Real-time Layer](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_07_WebSocket_Realtime.md) | STOMP event broadcasting | Spring STOMP broker configuration, Event messages serialization |
 | **08** | [Pipeline Control System](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_08_Pipeline_Control.md) | Pause / Resume orchestration | Thread-safe room locking state machine, Intervention logic |
 | **09** | [Frontend Foundation](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Roadmap/Phase_09_Frontend_Base.md) | Frontend core & STOMP integration | React router, Zustand authorization & socket stores, API clients |

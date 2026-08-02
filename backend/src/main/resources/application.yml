@@ -3,8 +3,3 @@ spring:
     active: dev
   application:
     name: conclave-backend
-
-conclave:
-  jwt:
-    secret: ${JWT_SECRET:default-secure-and-extremely-long-secret-key-that-is-at-least-256-bits-long}
-    expiration: ${JWT_EXPIRATION:86400000}

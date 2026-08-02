@@ -63,7 +63,7 @@ Within `chatStore.js` and `websocket.js`, handlers must map websocket payloads t
   - Create `roomStore.js` managing list of active rooms.
   - Create `SetupView.jsx` using Tailwind CSS styling:
     - Display Room Name and Room Objective inputs.
-    - Role Configuration deck: cards containing dropdown list to select Model (Gemini, Fake OpenAI, Fake Claude) and Hex colors.
+    - Role Configuration deck: cards containing dropdown list to select Model (Llama 3, Mistral, Gemma) and Hex colors.
   - Submitting form invokes `POST /api/rooms` and navigates to the Room Chat view route upon receipt of a successful response.
 
 ### Task 9.3: Implement WebSocket STOMP Client and State Sync

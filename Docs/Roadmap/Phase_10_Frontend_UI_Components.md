@@ -35,7 +35,7 @@ frontend/src/components/
 #### `MessageBubble.jsx`
 - Left-aligned for models, right-aligned for user.
 - Left-aligned bubbles apply background tint and borders matching `uiColorHex` from configurations.
-- Header displays: `[Role Icon] Lead-Writer (via Gemini)`.
+- Header displays: `[Role Icon] Lead-Writer (via LLAMA3)`.
 - Metadata info-icon displays on hover: `latency`, `modelId`, `isMocked`.
 
 #### `ChatBar.jsx`

@@ -3,7 +3,7 @@
 ## 1. Module Planning: Orchestration & WorkflowState
 
 ### 1.1 Purpose
-The purpose of this phase is to construct the core orchestrator and context compression engine. The `MessageOrchestrator` parses model mentions (e.g., `@Lead-Writer`), retrieves history, translates it via adapters, runs inferences, and updates the `WorkflowState`. It also runs the **Janitor Service** (using Gemini) to compress history when it exceeds 10 messages, and tracks tokens via the `TokenUsageLogService`.
+The purpose of this phase is to construct the core orchestrator and context compression engine. The `MessageOrchestrator` parses model mentions (e.g., `@Lead-Writer`), retrieves history, translates it via adapters, runs inferences, and updates the `WorkflowState`. It also runs the **Janitor Service** (using Llama 3) to compress history when it exceeds 10 messages, and tracks tokens via the `TokenUsageLogService`.
 
 ### 1.2 Package / Folder Structure
 ```
@@ -22,11 +22,10 @@ backend/src/main/java/com/conclave/
 - **Coordinate Turns:** Core engine maps user mentions, resolves the associated model configuration, executes the `ProviderAdapter`, sends payloads to the resolved `ChatClient`, normalizes outputs, and persists results.
 - **Context Compression (The "Janitor" Turn):** 
   - *Trigger:* Triggers when a room's `conversation_history` exceeds 10 messages.
-  - *Operation:* Resolves a special internal summarizer client (Gemini). Passes the current draft, comments, and full message logs to summarize the context, writing the updated draft and comments back to the `workflow_state` table.
+  - *Operation:* Resolves Llama 3 as the internal summarizer client. Passes the current draft, comments, and full message logs to summarize the context, writing the updated draft and comments back to the `workflow_state` table.
   - *Purge:* Deletes middle messages in the database, retaining only the initial context foundation message and the most recent 2 messages (short-term memory).
 - **Token Logging Interceptor:** Intercepts responses. Extracts metrics:
-  - *Gemini:* Read `Usage` metadata from the `ChatResponse` payload.
-  - *Fakes:* Calculate simulated tokens using the `chars / 4` heuristic.
+  - *Ollama:* Read token count metadata from the `ChatResponse` payload.
   - Logs results to the database (`token_usage_log`).
 
 ---
@@ -101,20 +100,20 @@ public interface WorkflowStateService {
     4. Translate context, invoke client, and parse response.
     5. Persist the generated response as a `CanonicalMessage` (roleName set to target role).
     6. Extract token usage metadata, invoke `TokenUsageLogService`.
-  - Write integration test using a `FakeChatClient` verifying the execution round-trip.
+  - Write integration test using a mock Ollama client verifying the execution round-trip.
 
-### Task 6.4: Implement WorkflowState Service and Gemini Janitor Summarizer
+### Task 6.4: Implement WorkflowState Service and Llama 3 Janitor Summarizer
 - **Estimated Size:** L
 - **Risk:** High
 - **Prerequisites:** Task 6.3
 - **Definition of Done:**
-  - Create `WorkflowStateServiceImpl.java`.
-  - Implement `evaluateAndCompressHistory(UUID roomId)`:
-    - Checks count of messages in `conversation_history`.
-    - If count > 10, calls Gemini with a specialized system summarizer template: `[Current Draft]`, `[Review Comments]`, `[History]`. Instructions: Output updated consolidated draft and unresolved reviews.
-    - Updates `workflow_state` table columns `current_draft`, `review_comments`, and `last_updated_at`.
-    - Deletes middle logs, preserving the room's first message and the last 2 messages.
-  - Unit tests mock Gemini response to verify DB state updates and correct log deletion boundaries.
+- Create `WorkflowStateServiceImpl.java`.
+- Implement `evaluateAndCompressHistory(UUID roomId)`:
+  - Checks count of messages in `conversation_history`.
+  - If count > 10, calls Llama 3 with a specialized system summarizer template: `[Current Draft]`, `[Review Comments]`, `[History]`. Instructions: Output updated consolidated draft and unresolved reviews.
+  - Updates `workflow_state` table columns `current_draft`, `review_comments`, and `last_updated_at`.
+  - Deletes middle logs, preserving the room's first message and the last 2 messages.
+- Unit tests mock Llama 3 response to verify DB state updates and correct log deletion boundaries.
 
 ---
 

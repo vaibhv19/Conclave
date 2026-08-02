@@ -10,13 +10,13 @@ This document provides a strategic defense matrix detailing the rationale behind
 *   **Core Question:** *Why not write standard if-else blocks inside the main Chat controller to route prompts to different models?*
 *   **Strategic Defense & Rationale:** Direct conditional checks inside controllers violate the Single Responsibility and Open-Closed principles. Different local models (Llama 3, Mistral, Gemma) require very specific chat templates (special tokens, wrapping tags) to perform optimally. The Adapter pattern establishes a strict interface boundary (`ModelAdapter`), isolating template assembly logic from core orchestration and controller code.
 *   **Key Code Reference:** [ModelAdapter.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/integration/adapter/ModelAdapter.java)
-*   **Learning Guide Reference:** [03_Provider_Adapter_Pattern.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Provider_Adapter_Pattern.md) (Updated to Model Adapter Pattern)
+*   **Learning Guide Reference:** [03_Model_Adapter_Pattern.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Model_Adapter_Pattern.md) (Updated to Model Adapter Pattern)
 
 ### 2. Canonical Message Model
 *   **Core Question:** *Why persist history in a unified shape instead of caching model-specific JSON payloads?*
 *   **Strategic Defense & Rationale:** Caching model-specific raw prompts introduces model lock-in and prevents seamless context transitions. To execute multi-agent workflows where a Llama 3 draft is reviewed by Mistral and audited by Gemma, the backend requires a single, model-agnostic representation. `CanonicalMessage` standardizes metadata, sender roles (`USER`, `AI`, `SYSTEM`), content text, and model identifier tags globally.
 *   **Key Code Reference:** [CanonicalMessage.java](file:///d:/Coding/Projects----For%20Resume/Conclave/backend/src/main/java/com/conclave/domain/CanonicalMessage.java)
-*   **Learning Guide Reference:** [03_Provider_Adapter_Pattern.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Provider_Adapter_Pattern.md) (Updated to Model Adapter Pattern)
+*   **Learning Guide Reference:** [03_Model_Adapter_Pattern.md](file:///d:/Coding/Projects----For%20Resume/Conclave/Docs/Learning/03_Model_Adapter_Pattern.md) (Updated to Model Adapter Pattern)
 
 ### 3. Model Registry & Ollama Clients
 *   **Core Question:** *Why use a dynamic registry for local Ollama models rather than cloud provider clients or fake mocks?*

@@ -41,8 +41,8 @@ Conclave/
 
 - **DTOs / Models:** None.
 - **Configuration:**
-  - `application.yml` / `application-dev.yml` (JPA settings, DB URL, Spring AI Vertex configs, STOMP broker endpoints).
-  - `.env.example` (API key template for Gemini Vertex).
+  - `application.yml` / `application-dev.yml` (JPA settings, DB URL, Spring AI Ollama configs, STOMP broker endpoints).
+  - `.env.example` (Ollama base URL environment configuration).
   - `docker-compose.yml` (Postgres service definition).
 - **Security:** Standard `.gitignore` configurations to prevent API key leaks.
 - **Testing Requirements:** Spin up check; verify Spring Context loading and database connection.

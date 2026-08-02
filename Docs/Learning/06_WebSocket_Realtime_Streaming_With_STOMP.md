@@ -91,7 +91,7 @@ graph TD
 ```mermaid
 sequenceDiagram
     autonumber
-    participant LLM as Google Gemini
+    participant LLM as Ollama / Local Model
     participant Orch as MessageOrchestratorImpl
     participant Broker as SimpMessagingTemplate
     actor Client as React Client (stompjs)

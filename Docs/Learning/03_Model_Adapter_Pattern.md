@@ -112,7 +112,7 @@ sequenceDiagram
     participant Orch as MessageOrchestrator
     participant Adapter as LlamaAdapter
     participant DB as PostgreSQL
-
+ 
     Orch->>DB: Load history & WorkflowState
     DB-->>Orch: Canonical messages + State
     Orch->>Adapter: toModelFormat(history, state)

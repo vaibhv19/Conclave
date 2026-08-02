@@ -17,10 +17,10 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    @Value("${conclave.jwt.secret}")
+    @Value("${conclave.jwt.secret:default-secure-and-extremely-long-secret-key-that-is-at-least-256-bits-long}")
     private String secretKey;
 
-    @Value("${conclave.jwt.expiration}")
+    @Value("${conclave.jwt.expiration:86400000}") // 24 hours in ms
     private long jwtExpiration;
 
     public String extractEmail(String token) {

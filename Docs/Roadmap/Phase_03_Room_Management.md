@@ -26,7 +26,7 @@ backend/src/main/java/com/conclave/
 ### 1.3 Responsibilities & Dependencies
 - **Room Lifecycle:** Manages room status transitions (`INITIALIZED` -> `ACTIVE` -> `PAUSED` -> `ARCHIVED`). Upon room creation, it must automatically create a linked `WorkflowState` instance.
 - **Validation Engine:** Enforces validation rules:
-  - `modelId` must exist in the supported model list (`GEMINI_PRO`, `FAKE_OPENAI`, `FAKE_CLAUDE`).
+  - `modelId` must exist in the supported model list (`LLAMA3`, `MISTRAL`, `GEMMA`).
   - `uiColorHex` must be a valid 6-character hex code starting with `#` (`^#[0-9A-Fa-f]{6}$`).
   - Uniqueness of role names within the scope of the room (`room_id`, `role_name`).
 - **Security Dependency:** Pulls the logged-in user details from the security context to set `owner_id`. Restricts role assignment updates and room retrieval to the room owner.
