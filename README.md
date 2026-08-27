@@ -12,6 +12,18 @@ The platform serves as a systems engineering portfolio showcasing advanced Java/
 
 ---
 
+## Related Writing
+
+* [Beyond an API Call](https://vaibhav19.vercel.app/writing/what-changes-when-the-ai-stops-being-a-single-api-call)
+* [Beyond the Black Box](https://vaibhav19.vercel.app/writing/making-ai-systems-less-blackbox)
+* [Real-Time, Evolved](https://vaibhav19.vercel.app/writing/the-evolution-of-my-real-time-architecture)
+* [Local Intelligence](https://vaibhav19.vercel.app/writing/local-first-ai-why-i-kept-the-intelligence-close-to-the-application)
+* [Building Agents Twice](https://vaibhav19.vercel.app/writing/building-multi-agent-systems-twice-from-context-unification-to-agent-evaluation)
+* [Why One Backend Isn't Enough](https://vaibhav19.vercel.app/writing/why-some-of-my-projects-need-more-than-one-backend)
+* [ENGINEERING JOURNEY](https://vaibhav19.vercel.app/writing/engineering-journey)
+
+---
+
 ## 🎯 Project Overview & Motivation
 
 ### The Problem
