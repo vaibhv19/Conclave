@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react';
 export default function Sidebar({ 
     objective = '', 
     workflowState = { currentDraft: '', reviewComments: '' }, 
-    tokenUsage = { promptTokens: 0, completionTokens: 0 },
-    roleAssignments = []
+    tokenUsage = { promptTokens: 0, completionTokens: 0 }
 }) {
     const [collapsed, setCollapsed] = useState(false);
     const [draftUpdated, setDraftUpdated] = useState(false);

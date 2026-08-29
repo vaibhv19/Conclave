@@ -43,10 +43,6 @@ export const useRoomStore = create((set, get) => ({
         }
     },
 
-    setActiveRoom: (room) => {
-        set({ activeRoom: room });
-    },
-
     clearActiveRoom: () => {
         set({ activeRoom: null });
     },

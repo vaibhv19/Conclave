@@ -188,7 +188,6 @@ export default function RoomView() {
                     objective={activeRoom?.objective} 
                     workflowState={workflowState} 
                     tokenUsage={tokenUsage} 
-                    roleAssignments={activeRoom?.roleAssignments} 
                 />
 
                 {/* 2. Main Chat Workspace */}

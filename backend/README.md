@@ -196,7 +196,7 @@ To prevent GPU memory bloat and long inference delays, Conclave implements a con
 
 ## ⚙️ Configuration Properties
 
-The backend parses settings from environment variables. Copy `.env.example` to `backend/.env` or configure them on your host:
+The backend parses settings from environment variables. Copy `.env.example` to `.env` or configure them on your host:
 
 | Environment Variable | Config Property | Description | Default Value |
 | :--- | :--- | :--- | :--- |

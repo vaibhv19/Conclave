@@ -45,7 +45,7 @@ frontend/
 └── src/                                    # React source codebase
     ├── main.jsx                            # Standard DOM mounter
     ├── App.jsx                             # View routing controller
-    ├── App.css / index.css                 # Custom font definitions, Webkit resets, autofill overrides
+    ├── index.css                           # Custom font definitions, Webkit resets, autofill overrides
     ├── assets/                             # Logo SVGs and UI screenshots
     ├── components/                         # Granular visual panels
     │   ├── AlertBanner.jsx                 # WebSocket status and pause control decks

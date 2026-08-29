@@ -32,6 +32,9 @@ dist-ssr/
 *.swo
 .DS_Store
 
-# Logs
+# Logs and Test Results
 *.log
 logs/
+test-results/
+playwright-report/
+blob-report/

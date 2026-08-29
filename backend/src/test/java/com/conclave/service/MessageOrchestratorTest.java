@@ -97,26 +97,23 @@ class MessageOrchestratorTest {
     }
 
     @Test
-    void testProcessUserTurn_OrchestratesExecutionRoundTrip() {
-        CanonicalMessage response = messageOrchestrator.processUserTurn(
+    void testExecuteStreamingTurnAsync_OrchestratesExecutionRoundTrip() {
+        messageOrchestrator.executeStreamingTurnAsync(
                 room.getId(),
-                "@Lead-Writer please write a slogan review."
+                "Lead-Writer",
+                "Please write a slogan review."
         );
 
-        assertNotNull(response);
-        assertNotNull(response.getId());
+        // Verify history includes the generated AI message
+        List<CanonicalMessage> history = messageRepository.findByRoomIdOrderByCreatedAtAsc(room.getId());
+        assertFalse(history.isEmpty());
+        CanonicalMessage response = history.get(history.size() - 1);
         assertEquals("Lead-Writer", response.getRoleName());
         assertEquals(ModelId.LLAMA3.name(), response.getModelId());
         assertEquals(SenderType.AI, response.getSenderType());
         assertFalse(response.getIsMocked());
         assertNotNull(response.getContent());
         assertTrue(response.getContent().contains("Llama Analysis Review"));
-
-        // Verify history includes two messages: User + AI
-        List<CanonicalMessage> history = messageRepository.findByRoomIdOrderByCreatedAtAsc(room.getId());
-        assertEquals(2, history.size());
-        assertEquals(SenderType.USER, history.get(0).getSenderType());
-        assertEquals(SenderType.AI, history.get(1).getSenderType());
 
         // Verify token usage logged
         List<TokenUsageLog> logs = tokenUsageLogRepository.findByRoomId(room.getId());

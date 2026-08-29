@@ -18,6 +18,7 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,104 +52,9 @@ public class MessageOrchestratorImpl implements MessageOrchestrator {
     @Lazy
     private final WorkflowStateService workflowStateService;
 
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     @Lazy
     private MessageOrchestrator self;
-
-    @Override
-    @Transactional
-    public CanonicalMessage processUserTurn(UUID roomId, String userMessageContent) {
-        log.info("Processing user turn for room: {}", roomId);
-
-        // 1. Load Room
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new ResourceNotFoundException("Room not found: " + roomId));
-
-        // 2. Parse Mention
-        String mention = MentionParser.extractMention(userMessageContent)
-                .orElseThrow(() -> new OrchestrationException("No role mention found in message. Please mention a role using @RoleName."));
-
-        // 3. Resolve RoleAssignment
-        List<RoleAssignment> roleAssignments = roleAssignmentRepository.findByRoomId(roomId);
-        RoleAssignment matchedAssignment = roleAssignments.stream()
-                .filter(ra -> ra.getRoleName().replace("-", " ").replace("_", " ").trim()
-                        .equalsIgnoreCase(mention.replace("-", " ").replace("_", " ").trim()))
-                .findFirst()
-                .orElseThrow(() -> new OrchestrationException("No role assignment found in room " + roomId + " matching mention: @" + mention));
-
-        String modelId = matchedAssignment.getModelId();
-
-        // 4. Persist User Message
-        CanonicalMessage userMessage = CanonicalMessage.builder()
-                .room(room)
-                .senderType(SenderType.USER)
-                .content(userMessageContent)
-                .createdAt(LocalDateTime.now())
-                .isMocked(false)
-                .build();
-        messageRepository.save(userMessage);
-
-        // 5. Load History & WorkflowState
-        List<CanonicalMessage> history = messageRepository.findByRoomIdOrderByCreatedAtAsc(roomId);
-        WorkflowState state = workflowStateRepository.findByRoomId(roomId)
-                .orElseThrow(() -> new ResourceNotFoundException("WorkflowState not found for room: " + roomId));
-
-        // 6. Resolve Adapter & Client
-        ModelAdapter adapter = modelRegistry.getAdapter(modelId);
-        ChatClient chatClient = modelRegistry.getClient(modelId);
-
-        // 7. Translate and Invoke LLM client
-        // Call adapter toModelFormat to ensure validation and format matching
-        List<org.springframework.ai.chat.messages.Message> messages = adapter.toModelFormat(history, state);
-        log.debug("Translated context to model format: {}", messages);
-
-        // We invoke ChatClient using a Prompt containing the consolidated history
-        ChatResponse chatResponse = chatClient.prompt(new Prompt(messages)).call().chatResponse();
-        if (chatResponse == null || chatResponse.getResult() == null || chatResponse.getResult().getOutput() == null) {
-            throw new OrchestrationException("Model execution returned empty response");
-        }
-
-        String responseText = chatResponse.getResult().getOutput().getContent();
-
-        CanonicalMessage aiResponse = adapter.fromModelFormat(responseText);
-        aiResponse.setRoom(room);
-        aiResponse.setRoleName(matchedAssignment.getRoleName());
-        aiResponse.setModelId(modelId);
-        aiResponse.setIsMocked(false); // All inference calls are real
-        aiResponse.setCreatedAt(LocalDateTime.now());
-
-        // Save AI response
-        aiResponse = messageRepository.save(aiResponse);
-
-        // 8. Log Tokens
-        Usage usage = chatResponse.getMetadata().getUsage();
-        int promptTokens = 0;
-        int completionTokens = 0;
-        if (usage != null) {
-            promptTokens = usage.getPromptTokens() != null ? usage.getPromptTokens().intValue() : 0;
-            completionTokens = usage.getGenerationTokens() != null ? usage.getGenerationTokens().intValue() : 0;
-        }
-
-        // If usage was empty (e.g. some client issues), fallback to heuristics calculation
-        if (promptTokens == 0 && completionTokens == 0) {
-            promptTokens = userMessageContent.length() / 4;
-            completionTokens = responseText.length() / 4;
-        }
-
-        tokenUsageLogService.logUsage(
-                roomId,
-                aiResponse.getId(),
-                modelId,
-                promptTokens,
-                completionTokens,
-                false
-        );
-
-        // 9. Evaluate Context Compression
-        workflowStateService.evaluateAndCompressHistory(roomId);
-
-        return aiResponse;
-    }
 
     @Override
     public void executeStreamingTurn(UUID roomId, String roleName, String promptContent) {

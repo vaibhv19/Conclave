@@ -9,8 +9,6 @@ export const useChatStore = create((set, get) => ({
     thinkingMessageId: null,
     loading: false,
 
-    setMessages: (messages) => set({ messages }),
-
     addMessage: (message) => set((state) => {
         // If a message with same ID already exists, do not duplicate
         if (state.messages.some(m => m.id === message.id)) {
@@ -24,8 +22,6 @@ export const useChatStore = create((set, get) => ({
             m.id === messageId ? { ...m, content, isThinking: false } : m
         )
     })),
-
-    setThinkingMessageId: (thinkingMessageId) => set({ thinkingMessageId }),
 
     setWorkflowState: (workflowState) => set({ workflowState }),
 
